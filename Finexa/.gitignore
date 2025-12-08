@@ -1,0 +1,21 @@
+# Node & Expo
+node_modules/
+.expo/
+.expo-shared/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+
+# macOS / VSCode / IDEs
+.DS_Store
+.vscode/
+*.swp
+
+# Build / local files
+android/
+ios/
+web-build/
+dist/
+build/
+*.local
+.env
