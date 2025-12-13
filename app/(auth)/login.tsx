@@ -2,6 +2,14 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from "expo-router";
+
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../services/firebase";
+import { useRouter } from "expo-router";
+import { Alert } from "react-native";
+
+
 export default function Login() {
   type FormErrors = {
   username?: string;
@@ -21,20 +29,40 @@ export default function Login() {
     return Object.keys(errors).length===0;
 
   }
-  const submit=()=>{
-    if(validateform())
-    {
-      console.log("usetrname and password are accepted");
-      setUsername("");
-      setPassword("");
-      setErrors({});
-    }
-    else{
-      console.log("details are not correct");
-    }
-
-    
+  const router = useRouter();
+  const submit = async () => {
+  if (!validateform()) {
+    console.log("details are not correct");
+    return;
   }
+
+  try {
+    // Same logic as signup
+    const email = `${username}@finexa.com`;
+
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    console.log("User logged in:", userCredential.user.uid);
+
+    Alert.alert("Success", "Login successful");
+
+    // Reset form
+    setUsername("");
+    setPassword("");
+    setErrors({});
+
+    // Navigate to home/dashboard
+   router.replace("/tabs/home");
+
+  } catch (error: any) {
+    console.log(error.message);
+    Alert.alert("Login failed", "Invalid username or password");
+  }
+};
   return (
     <View style={styles.container}>
         <SafeAreaView style={styles.sav}>

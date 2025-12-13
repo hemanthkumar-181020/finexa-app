@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+
 import { useEffect } from "react";
 
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -68,7 +69,7 @@ export default function Signup() {
 
     const user = userCredential.user;
 
-    // 🔥 WRITE USER DATA TO FIRESTORE
+    
     await setDoc(doc(db, "users", user.uid), {
       username: username,
       email: email,
@@ -87,7 +88,10 @@ export default function Signup() {
     setErrors({});
     setChecked(false);
 
-    router.replace("/");
+    // inside submit() after success
+   router.replace("../tabs");
+
+
 
   } catch (error: any) {
     console.log(error.message);
