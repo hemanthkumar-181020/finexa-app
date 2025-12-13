@@ -3,7 +3,23 @@ import { Link } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useEffect } from "react";
+
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../services/firebase";
+import { useRouter } from "expo-router";
+import { Alert } from "react-native";
+
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../services/firebase";
+
+
+
 export default function Signup() {
+
+  
+
   type FormErrors = {
   username?: string;
   password?: string;
@@ -31,21 +47,54 @@ export default function Signup() {
     return Object.keys(errors).length===0;
 
   }
-  const submit=()=>{
-    if(validateform())
-    {
-      console.log("usetrname and password are accepted");
-      setUsername("");
-      setPassword("");
-      setCpassword("");
-      setErrors({});
-    }
-    else{
-      console.log("details are not correct");
-    }
+  
 
     
+  const router = useRouter();
+ const submit = async () => {
+  if (!validateform()) {
+    console.log("details are not correct");
+    return;
   }
+
+  try {
+    const email = `${username}@finexa.com`;
+
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    const user = userCredential.user;
+
+    // 🔥 WRITE USER DATA TO FIRESTORE
+    await setDoc(doc(db, "users", user.uid), {
+      username: username,
+      email: email,
+      createdAt: serverTimestamp(),
+    });
+
+    console.log("User created:", user.uid);
+    console.log("User saved to Firestore");
+
+    Alert.alert("Success", "Account created successfully");
+
+    // Reset form
+    setUsername("");
+    setPassword("");
+    setCpassword("");
+    setErrors({});
+    setChecked(false);
+
+    router.replace("/");
+
+  } catch (error: any) {
+    console.log(error.message);
+    Alert.alert("Signup failed", error.message);
+  }
+};
+
   return (
     <View style={styles.container}>
         <SafeAreaView style={styles.sav}>
