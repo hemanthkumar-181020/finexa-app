@@ -1,232 +1,446 @@
 import Checkbox from 'expo-checkbox';
-import { Link } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Link, useRouter } from 'expo-router';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { useRef, useState } from 'react';
+import {
+  Alert,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-
-import { useEffect } from "react";
-
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../services/firebase";
-import { useRouter } from "expo-router";
-import { Alert } from "react-native";
-
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../services/firebase";
-
-
+import { AnimationConfig, BorderRadius, Colors, Gradients, Spacing, Typography } from '../../constants/theme';
+import { auth, db } from '../../services/firebase';
 
 export default function Signup() {
-
-  
-
   type FormErrors = {
-  username?: string;
-  password?: string;
-  cpassword?: string;
-  tos?: string;
-};
+    username?: string;
+    password?: string;
+    cpassword?: string;
+    tos?: string;
+  };
 
   const [isChecked, setChecked] = useState(false);
-  const [username,setUsername]=useState("");
-  const [password,setPassword]=useState("");
-  const [cpassword,setCpassword]=useState("");
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [cpassword, setCpassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
-  const validateform=()=>{
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const usernameInputScale = useRef(new Animated.Value(1)).current;
+  const passwordInputScale = useRef(new Animated.Value(1)).current;
+  const cpasswordInputScale = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useState(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: AnimationConfig.duration.slow,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: AnimationConfig.duration.slow,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  });
+
+  const handleInputFocus = (inputName: string, scaleAnim: Animated.Value) => {
+    setFocusedInput(inputName);
+    Animated.spring(scaleAnim, {
+      toValue: 1.02,
+      ...AnimationConfig.spring,
+      useNativeDriver: true,
+    }).start();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleInputBlur = (scaleAnim: Animated.Value) => {
+    setFocusedInput(null);
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      ...AnimationConfig.spring,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: AnimationConfig.buttonScale.pressed,
+      ...AnimationConfig.spring,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(buttonScale, {
+      toValue: AnimationConfig.buttonScale.normal,
+      ...AnimationConfig.spring,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleCheckboxChange = (value: boolean) => {
+    setChecked(value);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const validateForm = () => {
     let errors: FormErrors = {};
-
-    if(username==="") errors.username="username is required";
-    if(password==="") errors.password="password is required";
-    if(cpassword==="") errors.cpassword="please re enter your password ";
-     if (password && cpassword && password !== cpassword) {
-      errors.cpassword = "Passwords do not match";
+    if (username === '') errors.username = 'Username is required';
+    if (password === '') errors.password = 'Password is required';
+    if (cpassword === '') errors.cpassword = 'Please re-enter your password';
+    if (password && cpassword && password !== cpassword) {
+      errors.cpassword = 'Passwords do not match';
     }
-    if(!isChecked) errors.tos="you must agree to the terms and conditions"; 
+    if (!isChecked) errors.tos = 'You must agree to the terms and conditions';
     setErrors(errors);
-    return Object.keys(errors).length===0;
+    return Object.keys(errors).length === 0;
+  };
 
-  }
-  
-
-    
   const router = useRouter();
- const submit = async () => {
-  if (!validateform()) {
-    console.log("details are not correct");
-    return;
-  }
 
-  try {
-    const email = `${username}@finexa.com`;
+  const submit = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
+    if (!validateForm()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
 
-    const user = userCredential.user;
+    setIsLoading(true);
 
-    
-    await setDoc(doc(db, "users", user.uid), {
-      username: username,
-      email: email,
-      createdAt: serverTimestamp(),
-    });
+    try {
+      const email = `${username}@finexa.com`;
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-    console.log("User created:", user.uid);
-    console.log("User saved to Firestore");
+      await setDoc(doc(db, 'users', user.uid), {
+        username: username,
+        email: email,
+        createdAt: serverTimestamp(),
+      });
 
-    Alert.alert("Success", "Account created successfully");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Success', 'Account created successfully');
 
-    // Reset form
-    setUsername("");
-    setPassword("");
-    setCpassword("");
-    setErrors({});
-    setChecked(false);
+      setUsername('');
+      setPassword('');
+      setCpassword('');
+      setErrors({});
+      setChecked(false);
 
-    // inside submit() after success
-   router.replace("../tabs");
-
-
-
-  } catch (error: any) {
-    console.log(error.message);
-    Alert.alert("Signup failed", error.message);
-  }
-};
+      router.replace('../signin');
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Signup failed', error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <View style={styles.container}>
-        <SafeAreaView style={styles.sav}>
-          <View style={styles.c1}>
-            <Text style={styles.ht}>Create Account</Text>
-            <Text style={styles.Text}>Know Your Habits. Master Your Money</Text>
-          </View> 
-          <View style={styles.c2}>
-                <View style={styles.cmp}>
-                  <Text style={styles.Text}>Username</Text>
-                <TextInput placeholder="john123" style={styles.ti} value={username} onChangeText={setUsername} autoCapitalize="none"
-/>
-               
-                </View>
-                {errors.username && <Text style={{ color: 'red' }}>{errors.username}</Text>}
+    <LinearGradient colors={Gradients.primary} style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <Animated.View
+              style={[
+                styles.content,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }],
+                },
+              ]}
+            >
+              <View style={styles.header}>
+                <Text style={styles.title}>Create Account</Text>
+                <Text style={styles.subtitle}>Know Your Habits. Master Your Money</Text>
+              </View>
 
-                <View style={styles.cmp}>
-                  <Text style={styles.Text}>Password</Text>
-                  <TextInput placeholder="********" secureTextEntry={true} style={styles.ti} value={password} onChangeText={setPassword} autoCapitalize="none"/>
-                </View>
-                {errors.password && <Text style={{ color: 'red' }}>{errors.password}</Text>}
-                <View style={styles.cmp}>
-                  <Text style={styles.Text}>Confirm Password</Text>
-                  <TextInput placeholder="********" secureTextEntry={true} style={styles.ti} value={cpassword} onChangeText={setCpassword} autoCapitalize="none"/>
-                </View>   
-                {errors.cpassword && <Text style={{ color: 'red' }}>{errors.cpassword}</Text>}
-          </View>
-          
-          <View style={styles.c3} >
-               <View style={styles.Checkbox}>
-                    <Checkbox
-                      value={isChecked}
-                      onValueChange={setChecked}
-                      color={isChecked ? '#4630EB' : undefined}
+              <View style={styles.formCard}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Username</Text>
+                  <Animated.View
+                    style={[
+                      styles.inputWrapper,
+                      focusedInput === 'username' && styles.inputWrapperFocused,
+                      { transform: [{ scale: usernameInputScale }] },
+                    ]}
+                  >
+                    <TextInput
+                      placeholder="john123"
+                      placeholderTextColor={Colors.placeholder}
+                      style={styles.input}
+                      value={username}
+                      onChangeText={setUsername}
+                      autoCapitalize="none"
+                      onFocus={() => handleInputFocus('username', usernameInputScale)}
+                      onBlur={() => handleInputBlur(usernameInputScale)}
                     />
-                    <Text style={{ marginLeft: 10 }}>I agree to the Terms of Service and <Link href="/privacypolicy"><Text style={{ color: 'blue' }}>Privacy Policy</Text></Link></Text>
-               </View>
-               {errors.tos && <Text style={{ color: 'red' }}>{errors.tos}</Text>}
-               <Pressable style={styles.button} onPress={submit}>
-                  <Text style={styles.btn}>Sign Up</Text>
-                </Pressable>
-          </View>
-          
-          <View  style={styles.c4}>
-            <Text>___________ or continue with ____________</Text>
-            <Pressable style={styles.button}>
-                  <Text style={styles.btn}>Google</Text>
-                </Pressable>
-            <Text>already have an account?<Link href="/login"><Text style={{ color: 'blue' }}>Log in</Text> </Link></Text>
-          </View>
+                  </Animated.View>
+                  {errors.username && <Text style={styles.errorText}>{errors.username}</Text>}
+                </View>
 
-        </SafeAreaView>
-    </View>
-  )
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Password</Text>
+                  <Animated.View
+                    style={[
+                      styles.inputWrapper,
+                      focusedInput === 'password' && styles.inputWrapperFocused,
+                      { transform: [{ scale: passwordInputScale }] },
+                    ]}
+                  >
+                    <TextInput
+                      placeholder="********"
+                      placeholderTextColor={Colors.placeholder}
+                      secureTextEntry={true}
+                      style={styles.input}
+                      value={password}
+                      onChangeText={setPassword}
+                      autoCapitalize="none"
+                      onFocus={() => handleInputFocus('password', passwordInputScale)}
+                      onBlur={() => handleInputBlur(passwordInputScale)}
+                    />
+                  </Animated.View>
+                  {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Confirm Password</Text>
+                  <Animated.View
+                    style={[
+                      styles.inputWrapper,
+                      focusedInput === 'cpassword' && styles.inputWrapperFocused,
+                      { transform: [{ scale: cpasswordInputScale }] },
+                    ]}
+                  >
+                    <TextInput
+                      placeholder="********"
+                      placeholderTextColor={Colors.placeholder}
+                      secureTextEntry={true}
+                      style={styles.input}
+                      value={cpassword}
+                      onChangeText={setCpassword}
+                      autoCapitalize="none"
+                      onFocus={() => handleInputFocus('cpassword', cpasswordInputScale)}
+                      onBlur={() => handleInputBlur(cpasswordInputScale)}
+                    />
+                  </Animated.View>
+                  {errors.cpassword && <Text style={styles.errorText}>{errors.cpassword}</Text>}
+                </View>
+
+                <TouchableOpacity
+                  style={styles.checkboxContainer}
+                  onPress={() => handleCheckboxChange(!isChecked)}
+                  activeOpacity={0.7}
+                >
+                  <Checkbox
+                    value={isChecked}
+                    onValueChange={handleCheckboxChange}
+                    color={isChecked ? Colors.mint : undefined}
+                    style={styles.checkbox}
+                  />
+                  <Text style={styles.checkboxText}>
+                    I agree to the{' '}
+                    <Link href="/privacypolicy">
+                      <Text style={styles.linkText}>Terms of Service and Privacy Policy</Text>
+                    </Link>
+                  </Text>
+                </TouchableOpacity>
+                {errors.tos && <Text style={styles.errorText}>{errors.tos}</Text>}
+
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  onPress={submit}
+                  disabled={isLoading}
+                >
+                  <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+                    <LinearGradient
+                      colors={Gradients.button}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.button}
+                    >
+                      <Text style={styles.buttonText}>
+                        {isLoading ? 'Creating account...' : 'Sign Up'}
+                      </Text>
+                    </LinearGradient>
+                  </Animated.View>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or continue with</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity style={styles.socialButton}>
+                <Text style={styles.socialButtonText}>Google</Text>
+              </TouchableOpacity>
+
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Already have an account? </Text>
+                <Link href="/login">
+                  <Text style={styles.linkText}>Log in</Text>
+                </Link>
+              </View>
+            </Animated.View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
+  );
 }
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1, 
-    },
-    sav: { 
-      flex: 1 ,
-      backgroundColor:'violet',
-      gap:20,
-     },
-     c1:{
-      flex:1,
-      justifyContent:"center",
-      alignItems:"center",
 
-     },
-     c2:{
-       flex:2,
-       alignItems:"flex-start",
-       marginLeft:"10%",
-     },
-     c3:{
-       flex:1,
-       alignItems:"center",
-     },
-     c4:{
-       flex:1,
-       alignItems:"center",
-     },
-    ti:{
-      borderRadius:15,
-      borderWidth:1,
-      borderColor:'white',
-      padding:12,
-      marginBottom:16,
-      width:"88%",
-    },
-    Text:{
-      color:'white',
-      fontSize:15,
-    },
-    ht:{
-      color:'white',
-      fontSize:25,
-    },
-    bdy:{
-      flex:5,
-      gap:10,
-      alignItems:"flex-start",
-      paddingLeft:"10%",
-    },
-    cmp:{
-      flex:1,
-      width:"100%",
-      gap:5,  
-    },
-    btn:{
-      backgroundColor:'white',
-      color:'black',
-      padding:15,
-      borderRadius:30,
-      textAlign:'center',
-      fontSize:18,
-      fontWeight:'bold',
-      width:"100%",
-      
-    },
-    button:{
-      flex:1,
-      justifyContent:'center',
-      alignItems:'center',
-      width:"80%",
-    },
-    Checkbox:{
-      flexDirection: "row", alignItems: "center"
-    }
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  content: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  title: {
+    ...Typography.heading1,
+    marginBottom: Spacing.sm,
+  },
+  subtitle: {
+    ...Typography.bodySmall,
+    textAlign: 'center',
+  },
+  formCard: {
+    backgroundColor: Colors.glassBackground,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+  },
+  inputGroup: {
+    marginBottom: Spacing.md,
+  },
+  label: {
+    ...Typography.label,
+    marginBottom: Spacing.xs,
+  },
+  inputWrapper: {
+    backgroundColor: Colors.inputBackground,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+  },
+  inputWrapperFocused: {
+    borderColor: Colors.inputBorderFocused,
+    backgroundColor: 'rgba(127, 219, 202, 0.05)',
+  },
+  input: {
+    padding: Spacing.md,
+    ...Typography.body,
+    color: Colors.textPrimary,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 12,
+    marginTop: Spacing.xs,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Spacing.md,
+  },
+  checkbox: {
+    marginRight: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  checkboxText: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
+  button: {
+    borderRadius: BorderRadius.full,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+  },
+  buttonText: {
+    ...Typography.button,
+    color: Colors.white,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.glassBorder,
+  },
+  dividerText: {
+    ...Typography.bodySmall,
+    color: Colors.textMuted,
+    paddingHorizontal: Spacing.md,
+  },
+  socialButton: {
+    backgroundColor: Colors.white,
+    borderRadius: BorderRadius.full,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  socialButtonText: {
+    ...Typography.button,
+    color: Colors.deepNavy.dark,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: Spacing.lg,
+  },
+  footerText: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+  },
+  linkText: {
+    ...Typography.bodySmall,
+    color: Colors.mint,
+    fontWeight: '600',
+  },
 });
