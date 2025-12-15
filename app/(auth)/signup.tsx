@@ -144,7 +144,7 @@ export default function Signup() {
       setErrors({});
       setChecked(false);
 
-      router.replace('../signin');
+      router.replace("../signin");
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Signup failed', error.message);
