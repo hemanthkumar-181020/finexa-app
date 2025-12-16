@@ -5,6 +5,10 @@ import { Link, useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useRef, useState } from 'react';
+import { Ionicons,FontAwesome } from '@expo/vector-icons';
+
+
+
 import {
   Alert,
   Animated,
@@ -26,11 +30,17 @@ export default function Signup() {
     username?: string;
     password?: string;
     cpassword?: string;
+    email?:string;
     tos?: string;
+    showpassword?:boolean;
+    showcpassword?:boolean;
   };
 
   const [isChecked, setChecked] = useState(false);
   const [username, setUsername] = useState('');
+  const [email,setEmail] = useState('');
+  const [showpassword,setShowpassword] = useState(false);
+  const [showcpassword,setShowcpassword] = useState(false);
   const [password, setPassword] = useState('');
   const [cpassword, setCpassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -39,6 +49,7 @@ export default function Signup() {
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const usernameInputScale = useRef(new Animated.Value(1)).current;
+  const emailInputScale = useRef(new Animated.Value(1)).current;
   const passwordInputScale = useRef(new Animated.Value(1)).current;
   const cpasswordInputScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -100,9 +111,14 @@ export default function Signup() {
   };
 
   const validateForm = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     let errors: FormErrors = {};
     if (username === '') errors.username = 'Username is required';
     if (password === '') errors.password = 'Password is required';
+    if (email === '') errors.email = 'email is required';
+    else if (!emailRegex.test(email)){
+      errors.email = 'Invalid email format';
+    }
     if (cpassword === '') errors.cpassword = 'Please re-enter your password';
     if (password && cpassword && password !== cpassword) {
       errors.cpassword = 'Passwords do not match';
@@ -180,7 +196,10 @@ export default function Signup() {
 
               <View style={styles.formCard}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Username</Text>
+                  <View style={styles.labelcontainer}>
+                    <Text style={styles.label}>Username</Text>
+                    <FontAwesome name="user" size={20} color="gray" style={styles.icon} />
+                  </View>
                   <Animated.View
                     style={[
                       styles.inputWrapper,
@@ -188,8 +207,9 @@ export default function Signup() {
                       { transform: [{ scale: usernameInputScale }] },
                     ]}
                   >
+                  
                     <TextInput
-                      placeholder="john123"
+                      placeholder="John_123"
                       placeholderTextColor={Colors.placeholder}
                       style={styles.input}
                       value={username}
@@ -203,7 +223,44 @@ export default function Signup() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Password</Text>
+                  <View style={styles.labelcontainer}>
+                    <Text style={styles.label}>Email</Text>
+                    <FontAwesome name="envelope" size={20} color="gray" style={styles.icon} />
+                  </View>
+                  <Animated.View
+                    style={[
+                      styles.inputWrapper,
+                      focusedInput === 'email' && styles.inputWrapperFocused,
+                      { transform: [{ scale: usernameInputScale }] },
+                    ]}
+                  >
+                    
+
+                    <TextInput
+                      placeholder="abc123@gmail.com"
+                      placeholderTextColor={Colors.placeholder}
+                      style={styles.input}
+                      value={email}
+                      onChangeText={setEmail}
+                      autoCapitalize="none"
+                      onFocus={() => handleInputFocus('email', emailInputScale)}
+                      onBlur={() => handleInputBlur(emailInputScale)}
+                    />
+                  </Animated.View>
+                  {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <View style = {styles.labelcontainer}>
+                    <Text style={styles.label}>Password</Text>
+                    <TouchableOpacity onPress={() => setShowpassword(!showpassword)} style = {{marginLeft:'auto',marginRight:5}}>
+                      <Ionicons
+                        name={showpassword ? 'eye' : 'eye-off'}
+                        size={24}
+                        color="gray"
+                      />
+                    </TouchableOpacity>
+                  </View>
                   <Animated.View
                     style={[
                       styles.inputWrapper,
@@ -211,10 +268,11 @@ export default function Signup() {
                       { transform: [{ scale: passwordInputScale }] },
                     ]}
                   >
+                    
                     <TextInput
                       placeholder="********"
                       placeholderTextColor={Colors.placeholder}
-                      secureTextEntry={true}
+                      secureTextEntry={!showpassword}
                       style={styles.input}
                       value={password}
                       onChangeText={setPassword}
@@ -222,13 +280,25 @@ export default function Signup() {
                       onFocus={() => handleInputFocus('password', passwordInputScale)}
                       onBlur={() => handleInputBlur(passwordInputScale)}
                     />
+                  
+
                   </Animated.View>
                   {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Confirm Password</Text>
-                  <Animated.View
+                  <View style={styles.labelcontainer}>
+                    <Text style={styles.label}>Confirm Password</Text>
+                    <TouchableOpacity onPress={() => setShowcpassword(!showcpassword)} style = {{marginLeft:'auto',marginRight:5}} >
+                    <Ionicons
+                        name={showcpassword ? 'eye' : 'eye-off'}
+                        size={24}
+                        color="gray"
+                       
+                      />
+                    </TouchableOpacity>
+                  </View>
+                    <Animated.View
                     style={[
                       styles.inputWrapper,
                       focusedInput === 'cpassword' && styles.inputWrapperFocused,
@@ -238,7 +308,7 @@ export default function Signup() {
                     <TextInput
                       placeholder="********"
                       placeholderTextColor={Colors.placeholder}
-                      secureTextEntry={true}
+                      secureTextEntry={!showcpassword}
                       style={styles.input}
                       value={cpassword}
                       onChangeText={setCpassword}
@@ -246,6 +316,7 @@ export default function Signup() {
                       onFocus={() => handleInputFocus('cpassword', cpasswordInputScale)}
                       onBlur={() => handleInputBlur(cpasswordInputScale)}
                     />
+                    
                   </Animated.View>
                   {errors.cpassword && <Text style={styles.errorText}>{errors.cpassword}</Text>}
                 </View>
@@ -442,5 +513,13 @@ const styles = StyleSheet.create({
     ...Typography.bodySmall,
     color: Colors.mint,
     fontWeight: '600',
+  },
+  icon:{
+    marginLeft:'auto',
+  },
+  labelcontainer :{
+    flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 8,
   },
 });
