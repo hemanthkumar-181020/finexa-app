@@ -5,13 +5,16 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { useAuth } from "../../services/AuthContext";
 
 export default function More() {
   const router = useRouter();
+  const { userProfile, signOut } = useAuth();
 
   type ItemProps = {
     icon: keyof typeof Ionicons.glyphMap;
@@ -19,6 +22,28 @@ export default function More() {
     value?: string;
     route?: string;
     danger?: boolean;
+    onPress?: () => void;
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch (error) {
+              Alert.alert("Error", "Failed to logout. Please try again.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const Item = ({
@@ -27,9 +52,16 @@ export default function More() {
     value,
     route,
     danger = false,
+    onPress,
   }: ItemProps) => (
     <Pressable
-      onPress={() => route && router.push(route as any)}
+      onPress={() => {
+        if (onPress) {
+          onPress();
+        } else if (route) {
+          router.push(route as any);
+        }
+      }}
       style={({ pressed }) => [
         styles.item,
         pressed && styles.itemPressed,
@@ -37,7 +69,7 @@ export default function More() {
       ]}
     >
       <View style={styles.itemLeft}>
-        <View style={styles.iconChip}>
+        <View style={[styles.iconChip, danger && styles.dangerIconChip]}>
           <Ionicons
             name={icon}
             size={20}
@@ -68,9 +100,12 @@ export default function More() {
     </Pressable>
   );
 
+  const displayName = userProfile?.username || "User";
+  const displayEmail = userProfile?.email || "";
+  const avatarLetter = displayName.charAt(0).toUpperCase();
+
   return (
     <LinearGradient
-      // dark–to–teal like your provided themes
       colors={["#020b26", "#04738b"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -83,7 +118,6 @@ export default function More() {
       >
         <Text style={styles.header}>More</Text>
 
-        {/* Account */}
         <Text style={styles.section}>Account</Text>
         <Pressable
           style={({ pressed }) => [
@@ -93,20 +127,17 @@ export default function More() {
           onPress={() => router.push("/profile" as any)}
         >
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>H</Text>
+            <Text style={styles.avatarText}>{avatarLetter}</Text>
           </View>
 
           <View style={{ flex: 1 }}>
-            <Text style={styles.name}>Hemanth Kumar Bommi</Text>
-            <Text style={styles.email}>
-              bommihemanthkumar979@gmail.com
-            </Text>
+            <Text style={styles.name}>{displayName}</Text>
+            <Text style={styles.email}>{displayEmail}</Text>
           </View>
 
           <Ionicons name="chevron-forward" size={18} color="#dbeafe" />
         </Pressable>
 
-        {/* Upgrade button with same gradient as login/signup */}
         <Pressable
           style={({ pressed }) => [
             styles.upgradeWrapper,
@@ -125,7 +156,6 @@ export default function More() {
           </LinearGradient>
         </Pressable>
 
-        {/* Finance */}
         <Text style={styles.section}>Finance</Text>
         <Item icon="grid" title="Categories" route="/categories" />
         <Item icon="pricetag" title="Labels" route="/labels" />
@@ -141,7 +171,6 @@ export default function More() {
           route="/currency"
         />
 
-        {/* Wallets */}
         <Text style={styles.section}>Accounts & Wallets</Text>
         <Item
           icon="wallet"
@@ -159,25 +188,22 @@ export default function More() {
           route="/wallets/crypto"
         />
 
-        {/* App Settings */}
         <Text style={styles.section}>App Settings</Text>
         <Item icon="notifications" title="Notifications" />
         <Item icon="color-palette" title="Appearance" />
         <Item icon="language" title="Language" />
         <Item icon="settings" title="Advanced" route="/advanced" />
 
-        {/* Support */}
         <Text style={styles.section}>Support</Text>
         <Item icon="help-circle" title="Help Center" />
         <Item icon="mail" title="Contact Support" />
         <Item icon="document-text" title="Terms & Policies" />
 
-        {/* Logout */}
         <Item
           icon="log-out"
           title="Logout"
           danger
-          route="/(auth)/login"
+          onPress={handleLogout}
         />
 
         <Text style={styles.version}>Version 1.0.0</Text>
@@ -207,6 +233,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 8,
     letterSpacing: 1,
+    textTransform: "uppercase",
   },
   profileCard: {
     flexDirection: "row",
@@ -238,6 +265,7 @@ const styles = StyleSheet.create({
   name: {
     color: "#e5e7eb",
     fontWeight: "600",
+    fontSize: 16,
   },
   email: {
     color: "#9ca3af",
@@ -294,6 +322,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(15,118,178,0.35)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  dangerIconChip: {
+    backgroundColor: "rgba(239,68,68,0.25)",
   },
   itemText: {
     color: "#e5e7eb",
