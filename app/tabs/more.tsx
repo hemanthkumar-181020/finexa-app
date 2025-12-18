@@ -1,4 +1,5 @@
-import React from "react";
+// app/tabs/more.tsx
+import React from 'react';
 import {
   View,
   Text,
@@ -6,15 +7,19 @@ import {
   Pressable,
   ScrollView,
   Alert,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import { useAuth } from "../../services/AuthContext";
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+
+import { useAuth } from '../../services/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function More() {
   const router = useRouter();
   const { userProfile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   type ItemProps = {
     icon: keyof typeof Ionicons.glyphMap;
@@ -26,24 +31,20 @@ export default function More() {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await signOut();
-            } catch (error) {
-              Alert.alert("Error", "Failed to logout. Please try again.");
-            }
-          },
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch {
+            Alert.alert('Error', 'Failed to logout. Please try again.');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const Item = ({
@@ -56,11 +57,8 @@ export default function More() {
   }: ItemProps) => (
     <Pressable
       onPress={() => {
-        if (onPress) {
-          onPress();
-        } else if (route) {
-          router.push(route as any);
-        }
+        if (onPress) onPress();
+        else if (route) router.push(route as any);
       }}
       style={({ pressed }) => [
         styles.item,
@@ -73,15 +71,10 @@ export default function More() {
           <Ionicons
             name={icon}
             size={20}
-            color={danger ? "#fde2e2" : "#e0f2ff"}
+            color={danger ? '#fde2e2' : '#e0f2ff'}
           />
         </View>
-        <Text
-          style={[
-            styles.itemText,
-            danger && { color: "#fecaca" },
-          ]}
-        >
+        <Text style={[styles.itemText, danger && { color: '#fecaca' }]}>
           {title}
         </Text>
       </View>
@@ -90,23 +83,19 @@ export default function More() {
         <Text style={styles.value}>{value}</Text>
       ) : (
         !danger && (
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color="#cbd5f5"
-          />
+          <Ionicons name="chevron-forward" size={18} color="#cbd5f5" />
         )
       )}
     </Pressable>
   );
 
-  const displayName = userProfile?.username || "User";
-  const displayEmail = userProfile?.email || "";
+  const displayName = userProfile?.username || 'User';
+  const displayEmail = userProfile?.email || '';
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   return (
     <LinearGradient
-      colors={["#020b26", "#04738b"]}
+      colors={isDark ? ['#020b26', '#04738b'] : ['#f8fafc', '#e2e8f0']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.gradient}
@@ -116,15 +105,35 @@ export default function More() {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.header}>More</Text>
+        {/* top bar with title + top‑right theme toggle */}
+        <View style={styles.topBar}>
+          <Text
+            style={[
+              styles.header,
+              !isDark && { color: '#020617' },
+            ]}
+          >
+            More
+          </Text>
 
+          <Pressable onPress={toggleTheme} style={styles.themeToggle}>
+            <Ionicons
+              name={isDark ? 'sunny' : 'moon'}
+              size={22}
+              color={isDark ? '#e5e7eb' : '#020617'}
+            />
+          </Pressable>
+        </View>
+
+        {/* ACCOUNT */}
         <Text style={styles.section}>Account</Text>
+
         <Pressable
           style={({ pressed }) => [
             styles.profileCard,
             pressed && styles.cardPressed,
           ]}
-          onPress={() => router.push("/profile" as any)}
+          onPress={() => router.push('/profile' as any)}
         >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{avatarLetter}</Text>
@@ -138,6 +147,7 @@ export default function More() {
           <Ionicons name="chevron-forward" size={18} color="#dbeafe" />
         </Pressable>
 
+        {/* UPGRADE BANNER */}
         <Pressable
           style={({ pressed }) => [
             styles.upgradeWrapper,
@@ -146,7 +156,7 @@ export default function More() {
           onPress={() => {}}
         >
           <LinearGradient
-            colors={["#0284c7", "#22c1c3"]}
+            colors={['#0284c7', '#22c1c3']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.upgrade}
@@ -156,6 +166,7 @@ export default function More() {
           </LinearGradient>
         </Pressable>
 
+        {/* FINANCE */}
         <Text style={styles.section}>Finance</Text>
         <Item icon="grid" title="Categories" route="/categories" />
         <Item icon="pricetag" title="Labels" route="/labels" />
@@ -164,19 +175,11 @@ export default function More() {
           title="Scheduled Transactions"
           route="/scheduled"
         />
-        <Item
-          icon="cash"
-          title="Main Currency"
-          value="INR"
-          route="/currency"
-        />
+        <Item icon="cash" title="Main Currency" value="INR" route="/currency" />
 
+        {/* ACCOUNTS & WALLETS */}
         <Text style={styles.section}>Accounts & Wallets</Text>
-        <Item
-          icon="wallet"
-          title="Manual Wallets"
-          route="/wallets/manual"
-        />
+        <Item icon="wallet" title="Manual Wallets" route="/wallets/manual" />
         <Item
           icon="card"
           title="Bank Accounts & E-Wallets"
@@ -188,17 +191,20 @@ export default function More() {
           route="/wallets/crypto"
         />
 
+        {/* APP SETTINGS */}
         <Text style={styles.section}>App Settings</Text>
         <Item icon="notifications" title="Notifications" />
         <Item icon="color-palette" title="Appearance" />
         <Item icon="language" title="Language" />
         <Item icon="settings" title="Advanced" route="/advanced" />
 
+        {/* SUPPORT */}
         <Text style={styles.section}>Support</Text>
         <Item icon="help-circle" title="Help Center" />
         <Item icon="mail" title="Contact Support" />
         <Item icon="document-text" title="Terms & Policies" />
 
+        {/* LOGOUT */}
         <Item
           icon="log-out"
           title="Logout"
@@ -220,127 +226,162 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
-  header: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#f9fafb",
-    marginTop: 8,
+
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 16,   // distance from top
     marginBottom: 12,
   },
+
+  themeToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+
+  header: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#f9fafb',
+  },
+
   section: {
     fontSize: 13,
-    color: "#cbd5f5",
+    color: '#cbd5f5',
     marginTop: 24,
     marginBottom: 8,
     letterSpacing: 1,
-    textTransform: "uppercase",
+    textTransform: 'uppercase',
   },
+
   profileCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(9,16,40,0.92)",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(9,16,40,0.92)',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.35)",
+    borderColor: 'rgba(148,163,184,0.35)',
   },
+
   cardPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.9,
   },
+
   avatar: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#0ea5e9",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#0ea5e9',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
+
   avatarText: {
-    color: "#e0f2fe",
-    fontWeight: "700",
+    color: '#e0f2fe',
+    fontWeight: '700',
     fontSize: 18,
   },
+
   name: {
-    color: "#e5e7eb",
-    fontWeight: "600",
+    color: '#e5e7eb',
+    fontWeight: '600',
     fontSize: 16,
   },
+
   email: {
-    color: "#9ca3af",
+    color: '#9ca3af',
     fontSize: 12,
     marginTop: 2,
   },
+
   upgradeWrapper: {
     marginTop: 14,
   },
+
   upgrade: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 24,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    shadowColor: "#22c1c3",
+    shadowColor: '#22c1c3',
     shadowOpacity: 0.4,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
     gap: 8,
   },
+
   upgradeText: {
-    fontWeight: "700",
-    color: "#f9fafb",
+    fontWeight: '700',
+    color: '#f9fafb',
     fontSize: 15,
   },
+
   item: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(9,16,40,0.9)",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(9,16,40,0.9)',
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 18,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "rgba(30,64,175,0.6)",
+    borderColor: 'rgba(30,64,175,0.6)',
   },
+
   itemPressed: {
     transform: [{ scale: 0.97 }],
     opacity: 0.9,
   },
+
   itemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
+
   iconChip: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(15,118,178,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(15,118,178,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
   dangerIconChip: {
-    backgroundColor: "rgba(239,68,68,0.25)",
+    backgroundColor: 'rgba(239,68,68,0.25)',
   },
+
   itemText: {
-    color: "#e5e7eb",
+    color: '#e5e7eb',
     fontSize: 15,
   },
+
   value: {
-    color: "#dbeafe",
+    color: '#dbeafe',
     fontSize: 14,
   },
+
   dangerItem: {
-    borderColor: "rgba(248,113,113,0.7)",
-    backgroundColor: "rgba(127,29,29,0.35)",
+    borderColor: 'rgba(248,113,113,0.7)',
+    backgroundColor: 'rgba(127,29,29,0.35)',
   },
+
   version: {
-    textAlign: "center",
-    color: "#cbd5f5",
+    textAlign: 'center',
+    color: '#cbd5f5',
     marginTop: 18,
     fontSize: 12,
     marginBottom: 8,

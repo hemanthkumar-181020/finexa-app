@@ -11,11 +11,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 
 import { useTransactions } from '../../context/TransactionContext';
+import { useTheme } from '../../context/ThemeContext';
 import { importBankStatement } from '../../services/bankImport';
 import type { Transaction } from '../../types/transaction';
 
 export default function TransactionsScreen() {
   const { state, dispatch } = useTransactions();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const handleUpload = async () => {
     try {
@@ -24,15 +27,11 @@ export default function TransactionsScreen() {
         copyToCacheDirectory: true,
       });
 
-      if (result.canceled || !result.assets?.length) {
-        return;
-      }
+      if (result.canceled || !result.assets?.length) return;
 
       const file = result.assets[0];
-
       const importedTransactions = await importBankStatement(file);
 
-      // merge imported + existing (new first)
       dispatch({
         type: 'SET_TRANSACTIONS',
         payload: [...importedTransactions, ...state.transactions],
@@ -50,11 +49,23 @@ export default function TransactionsScreen() {
 
   const renderItem = ({ item }: { item: Transaction }) => (
     <View style={styles.row}>
-      <Text style={styles.category}>{item.category}</Text>
+      <Text
+        style={[
+          styles.category,
+          { color: isDark ? '#e5e7eb' : '#111827' },
+        ]}
+      >
+        {item.category}
+      </Text>
       <Text
         style={[
           styles.amount,
-          { color: item.type === 'expense' ? '#ff6b6b' : '#4cd964' },
+          {
+            color:
+              item.type === 'expense'
+                ? '#ef4444'
+                : '#16a34a',
+          },
         ]}
       >
         ₹{item.amount}
@@ -63,21 +74,38 @@ export default function TransactionsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Transactions</Text>
+    <SafeAreaView
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? '#020617' : '#f9fafb' },
+      ]}
+    >
+      <Text
+        style={[
+          styles.title,
+          { color: isDark ? '#f9fafb' : '#020617' },
+        ]}
+      >
+        Transactions
+      </Text>
 
-      {/* BANK STATEMENT UPLOAD */}
       <View style={styles.uploadBox}>
         <Button title="Upload Bank Statement (PDF)" onPress={handleUpload} />
       </View>
 
-      {/* TRANSACTION LIST */}
       <FlatList
         data={state.transactions}
         keyExtractor={item => item.id}
         renderItem={renderItem}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No transactions yet</Text>
+          <Text
+            style={[
+              styles.emptyText,
+              { color: isDark ? '#9ca3af' : '#6b7280' },
+            ]}
+          >
+            No transactions yet
+          </Text>
         }
       />
     </SafeAreaView>
@@ -88,12 +116,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#000',
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 12,
   },
   uploadBox: {
@@ -104,10 +130,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderColor: '#333',
+    borderColor: '#374151',
   },
   category: {
-    color: '#fff',
     fontSize: 16,
   },
   amount: {
@@ -116,7 +141,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    color: '#888',
     marginTop: 40,
   },
 });
