@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "1033553163040",
+    "project_id": "finexa-app-a6a96",
+    "storage_bucket": "finexa-app-a6a96.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1033553163040:android:74e00faaacfecef2db1d45",
+        "android_client_info": {
+          "package_name": "com.finexa.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1033553163040-sbrhd3k610eg2bqq5kfdpl10vrhnp5f6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.finexa.app",
+            "certificate_hash": "6976aa68c848569ad8542a358662abb23001cb88"
+          }
+        },
+        {
+          "client_id": "1033553163040-6dmuld9eu04ko4m8h3kjf47tc6erqh1f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgg-L168iIzCGDUEj0HC7Dr-_ME-QyH_4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1033553163040-6dmuld9eu04ko4m8h3kjf47tc6erqh1f.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1033553163040-jsk6v0qeagqh03isuv4csdv32o1o1tim.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anonymous.Finexa"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
