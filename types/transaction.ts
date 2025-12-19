@@ -7,6 +7,5 @@ export interface Transaction {
   type: TransactionType;   // 'income' | 'expense'
   category: string;        // e.g. 'Food', 'Bills'
   date: string;            // ISO string
-  note?: string;
   source?: 'manual' | 'csv' | 'sms' | 'import';
 }

@@ -13,7 +13,7 @@ export async function importBankStatement(
   } as any);
 
   const response = await fetch(
-    'https://pdf-extract-19k2.vercel.app/upload',
+    'https://pdf-extract-1.vercel.app/upload',
     {
       method: 'POST',
       body: formData,
