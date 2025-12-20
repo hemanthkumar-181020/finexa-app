@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,191 +7,118 @@ import {
   Alert,
   ActivityIndicator,
   SectionList,
-  FlatList,
-  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 
 import { useTransactions } from '../../context/TransactionContext';
-import { useTheme } from '../../context/ThemeContext';
 import { importBankStatement } from '../../services/bankImport';
+import { fetchTransactionsFromFirestore } from '../../services/firestoreTransactions';
+import { useAuth } from '../../services/AuthContext';
 import type { Transaction } from '../../types/transaction';
 
-/* -------------------- HELPERS -------------------- */
-
-// Group transactions by date
-function groupTransactionsByDate(transactions: Transaction[], selectedMonth?: string) {
+/* ------------------- HELPERS ------------------- */
+function groupByDate(transactions: Transaction[]) {
   const groups: Record<string, Transaction[]> = {};
-
   transactions.forEach(txn => {
-    const dateObj = new Date(txn.date);
-    const monthKey = dateObj.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-
-    if (selectedMonth && monthKey !== selectedMonth) return; // filter by selected month
-
-    const dateKey = dateObj.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-
-    if (!groups[dateKey]) groups[dateKey] = [];
-    groups[dateKey].push(txn);
+    const key = new Date(txn.date).toDateString();
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(txn);
   });
 
-  return Object.keys(groups)
-    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-    .map(date => ({ title: date, data: groups[date] }));
+  return Object.keys(groups).map(date => ({
+    title: date,
+    data: groups[date],
+  }));
 }
 
-// Get unique months from transactions
-function getUniqueMonths(transactions: Transaction[]) {
-  const months = transactions.map(txn => {
-    const d = new Date(txn.date);
-    return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-  });
-  return Array.from(new Set(months)).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-}
-
-/* -------------------- SCREEN -------------------- */
-
+/* ------------------- SCREEN ------------------- */
 export default function TransactionsScreen() {
   const { state, dispatch } = useTransactions();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const { user, loading: authLoading } = useAuth();
+  const [loading, setLoading] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!authLoading && user) {
+      loadTransactions();
+    }
+  }, [authLoading, user]);
 
-  const months = useMemo(() => getUniqueMonths(state.transactions), [state.transactions]);
+  const loadTransactions = async () => {
+    if (!user) return;
 
-  const handleUpload = async () => {
+    setLoading(true);
     try {
-      setIsLoading(true);
-
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf'],
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled || !result.assets?.length) {
-        setIsLoading(false);
-        return;
-      }
-
-      const file = result.assets[0];
-      const importedTransactions = await importBankStatement(file);
-
-      dispatch({
-        type: 'SET_TRANSACTIONS',
-        payload: [...importedTransactions, ...state.transactions],
-      });
-
-      Alert.alert('Success', `Imported ${importedTransactions.length} transactions`);
-    } catch (error) {
-      console.error('Bank import failed:', error);
-      Alert.alert('Error', 'Failed to import bank statement');
+      const txns = await fetchTransactionsFromFirestore(user.uid);
+      dispatch({ type: 'SET_TRANSACTIONS', payload: txns });
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to load transactions');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  return (
-    <SafeAreaView
-      style={[
-        styles.container,
-        { backgroundColor: isDark ? '#020617' : '#f9fafb' },
-      ]}
-    >
-      <Text style={[styles.title, { color: isDark ? '#f9fafb' : '#020617' }]}>
-        Transactions
-      </Text>
+  const handleUpload = async () => {
+    if (!user) return;
 
-      <View style={styles.uploadBox}>
-        <Button
-          title={isLoading ? 'Uploading...' : 'Upload Bank Statement (PDF)'}
-          onPress={handleUpload}
-          disabled={isLoading}
-        />
+    try {
+      setLoading(true);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf'],
+      });
+
+      // Check if user canceled
+      if ('canceled' in result && result.canceled) return;
+
+      const file = result.assets?.[0];
+      if (!file) return;
+
+      // Pass the picked file to your import function
+      const count = await importBankStatement(file, user.uid);
+      Alert.alert('Success', `Imported ${count} transactions`);
+      await loadTransactions();
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to import bank statement');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
       </View>
+    );
+  }
 
-      {/* Horizontal Month Selector */}
-      {months.length > 0 && (
-        <FlatList
-          horizontal
-          data={months}
-          keyExtractor={item => item}
-          contentContainerStyle={styles.monthList}
-          showsHorizontalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => setSelectedMonth(selectedMonth === item ? undefined : item)}
-              style={[
-                styles.monthItem,
-                {
-                  backgroundColor:
-                    selectedMonth === item
-                      ? '#3b82f6'
-                      : isDark
-                      ? '#1f2937'
-                      : '#e5e7eb',
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  color: selectedMonth === item ? '#fff' : isDark ? '#f9fafb' : '#111827',
-                  fontWeight: selectedMonth === item ? 'bold' : '500',
-                }}
-              >
-                {item}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      )}
+  return (
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Transactions</Text>
 
-      {/* Loading Indicator */}
-      {isLoading && (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={[styles.loadingText, { color: isDark ? '#9ca3af' : '#374151' }]}>
-            Processing bank statement…
-          </Text>
-        </View>
-      )}
+      <Button title="Upload Bank Statement (PDF)" onPress={handleUpload} />
 
-      {/* Date-wise Transactions */}
+      {loading && <ActivityIndicator style={{ marginTop: 20 }} />}
+
       <SectionList
-        sections={groupTransactionsByDate(state.transactions, selectedMonth)}
+        sections={groupByDate(state.transactions)}
         keyExtractor={item => item.id}
-        stickySectionHeadersEnabled
         renderSectionHeader={({ section }) => (
-          <Text style={[styles.sectionHeader, { color: isDark ? '#e5e7eb' : '#111827' }]}>
-            {section.title}
-          </Text>
+          <Text style={styles.section}>{section.title}</Text>
         )}
         renderItem={({ item }) => (
           <View style={styles.row}>
-            <Text style={[styles.category, { color: isDark ? '#e5e7eb' : '#111827' }]}>
-              {item.category}
-            </Text>
-            <Text
-              style={[
-                styles.amount,
-                { color: item.type === 'expense' ? '#ef4444' : '#16a34a' },
-              ]}
-            >
+            <Text>{item.category}</Text>
+            <Text style={{ color: item.type === 'expense' ? 'red' : 'green' }}>
               ₹{item.amount}
             </Text>
           </View>
         )}
         ListEmptyComponent={
-          !isLoading ? (
-            <Text style={[styles.emptyText, { color: isDark ? '#9ca3af' : '#6b7280' }]}>
-              No transactions yet
-            </Text>
+          !loading ? (
+            <Text style={styles.emptyText}>No transactions yet</Text>
           ) : null
         }
       />
@@ -199,24 +126,17 @@ export default function TransactionsScreen() {
   );
 }
 
-/* -------------------- STYLES -------------------- */
-
+/* ------------------- STYLES ------------------- */
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12 },
-  uploadBox: { marginBottom: 16 },
-  loadingBox: { alignItems: 'center', marginVertical: 20 },
-  loadingText: { marginTop: 8, fontSize: 14 },
-  sectionHeader: { fontSize: 15, fontWeight: 'bold', marginTop: 20, marginBottom: 6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderColor: '#4b5563' },
-  category: { fontSize: 16 },
-  amount: { fontSize: 16, fontWeight: '600' },
-  emptyText: { textAlign: 'center', marginTop: 40 },
-  monthList: { paddingVertical: 8 },
-  monthItem: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginRight: 8,
+  section: { fontWeight: 'bold', marginTop: 20 },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
   },
+  emptyText: { textAlign: 'center', marginTop: 40, color: '#6b7280' },
 });

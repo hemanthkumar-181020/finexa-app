@@ -1,11 +1,11 @@
 // types/transaction.ts
-export type TransactionType = 'income' | 'expense';
-
-export interface Transaction {
+export type Transaction = {
   id: string;
-  amount: number;          // positive number
-  type: TransactionType;   // 'income' | 'expense'
-  category: string;        // e.g. 'Food', 'Bills'
-  date: string;            // ISO string
-  source?: 'manual' | 'csv' | 'sms' | 'import';
-}
+  amount: number;
+  type: 'income' | 'expense';
+  category: string;
+  date: string;
+  note?: string;
+  source: 'bank';
+};
+
