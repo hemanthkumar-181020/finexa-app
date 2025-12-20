@@ -9,16 +9,17 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { addDoc, collection, Timestamp } from 'firebase/firestore';
-import { db } from '../../services/firebase';
 import { useTransactions } from '../../context/TransactionContext';
-import { fetchTransactionsFromFirestore } from '../../services/firestoreTransactions';
+import { 
+  fetchTransactionsFromFirestore, 
+  saveManualTransactionToFirestore 
+} from '../../services/firestoreTransactions';
 import { autoCategorize } from '../../utils/categorize';
 import { useAuth } from '../../services/AuthContext';
 
 export default function TransactionForm() {
   const { dispatch } = useTransactions();
-  const { user } = useAuth(); // current logged-in user
+  const { user } = useAuth();
 
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
@@ -46,15 +47,12 @@ export default function TransactionForm() {
 
       const category = autoCategorize(description);
 
-      // ✅ Save to Firestore in user's subcollection
-      await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+      // ✅ Save MANUAL transaction (NO UTR)
+      await saveManualTransactionToFirestore(user.uid, {
         amount: parsedAmount,
         type,
         category,
         note: description,
-        source: 'manual',
-        date: Timestamp.fromDate(new Date()),
-        createdAt: Timestamp.now(),
       });
 
       // Fetch updated transactions
