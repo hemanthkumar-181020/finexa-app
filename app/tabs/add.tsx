@@ -6,55 +6,80 @@ import {
   Pressable,
   Alert,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { addDoc, collection, Timestamp } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 import { useTransactions } from '../../context/TransactionContext';
+import { fetchTransactionsFromFirestore } from '../../services/firestoreTransactions';
 import { autoCategorize } from '../../utils/categorize';
-import { generateId } from '../../utils/id';
+import { useAuth } from '../../services/AuthContext';
 
 export default function TransactionForm() {
   const { dispatch } = useTransactions();
+  const { user } = useAuth(); // current logged-in user
 
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [description, setDescription] = useState('');
-  const [note, setNote] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!user) {
+      Alert.alert('Error', 'User not logged in');
+      return;
+    }
+
     const parsedAmount = Number(amount);
-
     if (!amount || !description) {
       Alert.alert('Validation Error', 'Amount and description are required');
       return;
     }
-
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       Alert.alert('Validation Error', 'Enter a valid amount');
       return;
     }
 
-    const finalCategory = autoCategorize(description);
+    try {
+      setLoading(true);
 
-    dispatch({
-      type: 'ADD_TRANSACTION',
-      payload: {
-        id: generateId(),
+      const category = autoCategorize(description);
+
+      // ✅ Save to Firestore in user's subcollection
+      await addDoc(collection(db, 'users', user.uid, 'transactions'), {
         amount: parsedAmount,
         type,
-        category: finalCategory,
-        date: new Date().toISOString(),
+        category,
+        note: description,
         source: 'manual',
-      },
-    });
+        date: Timestamp.fromDate(new Date()),
+        createdAt: Timestamp.now(),
+      });
 
-    setAmount('');
-    setDescription('');
-    setNote('');
-    setType('expense');
+      // Fetch updated transactions
+      const updated = await fetchTransactionsFromFirestore(user.uid);
+      dispatch({ type: 'SET_TRANSACTIONS', payload: updated });
+
+      // Reset form
+      setAmount('');
+      setDescription('');
+      setType('expense');
+
+      Alert.alert('Success', 'Transaction added');
+    } catch (err) {
+      console.error('Error saving transaction:', err);
+      Alert.alert('Error', 'Failed to save transaction');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Amount */}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.container}
+    >
       <Text style={styles.label}>Amount</Text>
       <TextInput
         style={styles.input}
@@ -64,63 +89,46 @@ export default function TransactionForm() {
         placeholder="Enter amount"
       />
 
-      {/* Type Toggle */}
       <Text style={styles.label}>Type</Text>
       <View style={styles.toggleContainer}>
         <Pressable
-          style={[
-            styles.toggleButton,
-            type === 'expense' && styles.activeExpense,
-          ]}
+          style={[styles.toggleButton, type === 'expense' && styles.activeExpense]}
           onPress={() => setType('expense')}
         >
-          <Text
-            style={[
-              styles.toggleText,
-              type === 'expense' && styles.activeText,
-            ]}
-          >
-            Expense
-          </Text>
+          <Text style={styles.toggleText}>Expense</Text>
         </Pressable>
 
         <Pressable
-          style={[
-            styles.toggleButton,
-            type === 'income' && styles.activeIncome,
-          ]}
+          style={[styles.toggleButton, type === 'income' && styles.activeIncome]}
           onPress={() => setType('income')}
         >
-          <Text
-            style={[
-              styles.toggleText,
-              type === 'income' && styles.activeText,
-            ]}
-          >
-            Income
-          </Text>
+          <Text style={styles.toggleText}>Income</Text>
         </Pressable>
       </View>
 
-      {/* Description */}
-      <Text style={styles.label}>Description (SMS / Bank text)</Text>
+      <Text style={styles.label}>Description</Text>
       <TextInput
         style={styles.input}
         value={description}
         onChangeText={setDescription}
-        placeholder="Swiggy order, Uber ride, Salary..."
+        placeholder="Swiggy, Uber, Salary..."
       />
-      {/* Submit */}
-      <Pressable style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitText}>Add Transaction</Text>
+
+      <Pressable
+        style={[styles.submitButton, loading && { opacity: 0.6 }]}
+        onPress={handleSubmit}
+        disabled={loading}
+      >
+        <Text style={styles.submitText}>{loading ? 'Saving...' : 'Add Transaction'}</Text>
       </Pressable>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: 16,
+    backgroundColor: '#fff',
   },
   label: {
     fontSize: 14,
@@ -157,10 +165,7 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 16,
-    color: '#444',
-  },
-  activeText: {
-    fontWeight: '700',
+    fontWeight: '600',
   },
   submitButton: {
     marginTop: 20,
