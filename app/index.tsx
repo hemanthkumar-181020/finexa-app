@@ -402,7 +402,7 @@ export default function Splash() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#00082f',
+    backgroundColor: '#000000ff',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -528,11 +528,11 @@ const styles = StyleSheet.create({
   loadingBarBackground: {
     width: '100%',
     height: 6,
-    backgroundColor: 'rgba(1, 69, 142, 0.4)',
+    backgroundColor: 'rgba(2, 5, 8, 0)',
     borderRadius: 4,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(131, 207, 203, 0.3)',
+    borderColor: 'rgba(8, 8, 8, 1)',
   },
   loadingBarFill: {
     position: 'absolute',
@@ -596,4 +596,3 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
-
