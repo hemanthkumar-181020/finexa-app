@@ -4,6 +4,7 @@ import { useTransactions } from '../../context/TransactionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ExpensePieChart } from '../../components/dashboard/ExpensePieChart';
 
+
 export default function BudgetsScreen() {
   const { state } = useTransactions();
   const { theme } = useTheme();
