@@ -3,14 +3,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../../services/AuthContext';
 
-
 export default function TabsLayout() {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#00082f' }}>
-        <ActivityIndicator size="large" color="#83cfcb" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#FFFFFF',
+        }}
+      >
+        <ActivityIndicator size="large" color="#22C55E" />
       </View>
     );
   }
@@ -24,11 +30,16 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0A1628',
-          borderTopColor: 'rgba(255,255,255,0.1)',
+          backgroundColor: '#fffdfdff',           // white bar
+          borderTopColor: '#0f0f10ff',            // light top border
+          height: 58,
         },
-        tabBarActiveTintColor: '#7C3AED',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: '#16A34A',       // green active icon/text
+        tabBarInactiveTintColor: '#9CA3AF',     // gray inactive
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
       }}
     >
       <Tabs.Screen
@@ -67,7 +78,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="more"
         options={{

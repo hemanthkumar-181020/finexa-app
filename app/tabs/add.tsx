@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,37 +8,39 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { useTransactions } from '../../context/TransactionContext';
-import { 
-  fetchTransactionsFromFirestore, 
-  saveManualTransactionToFirestore 
-} from '../../services/firestoreTransactions';
-import { autoCategorize } from '../../utils/categorize';
-import { useAuth } from '../../services/AuthContext';
+} from "react-native";
+import { useTransactions } from "../../context/TransactionContext";
+import {
+  fetchTransactionsFromFirestore,
+  saveManualTransactionToFirestore,
+} from "../../services/firestoreTransactions";
+import { autoCategorize } from "../../utils/categorize";
+import { useAuth } from "../../services/AuthContext";
 
 export default function TransactionForm() {
   const { dispatch } = useTransactions();
   const { user } = useAuth();
 
-  const [amount, setAmount] = useState('');
-  const [type, setType] = useState<'income' | 'expense'>('expense');
-  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState("");
+  const [type, setType] = useState<"income" | "expense">("expense");
+  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!user) {
-      Alert.alert('Error', 'User not logged in');
+      Alert.alert("Error", "User not logged in");
       return;
     }
 
     const parsedAmount = Number(amount);
+
     if (!amount || !description) {
-      Alert.alert('Validation Error', 'Amount and description are required');
+      Alert.alert("Validation Error", "Amount and description are required");
       return;
     }
+
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('Validation Error', 'Enter a valid amount');
+      Alert.alert("Validation Error", "Enter a valid amount");
       return;
     }
 
@@ -47,7 +49,7 @@ export default function TransactionForm() {
 
       const category = autoCategorize(description);
 
-      // ✅ Save MANUAL transaction (NO UTR)
+      // Save MANUAL transaction (no UTR)
       await saveManualTransactionToFirestore(user.uid, {
         amount: parsedAmount,
         type,
@@ -55,19 +57,17 @@ export default function TransactionForm() {
         note: description,
       });
 
-      // Fetch updated transactions
       const updated = await fetchTransactionsFromFirestore(user.uid);
-      dispatch({ type: 'SET_TRANSACTIONS', payload: updated });
+      dispatch({ type: "SET_TRANSACTIONS", payload: updated });
 
-      // Reset form
-      setAmount('');
-      setDescription('');
-      setType('expense');
+      setAmount("");
+      setDescription("");
+      setType("expense");
 
-      Alert.alert('Success', 'Transaction added');
+      Alert.alert("Success", "Transaction added");
     } catch (err) {
-      console.error('Error saving transaction:', err);
-      Alert.alert('Error', 'Failed to save transaction');
+      console.error("Error saving transaction:", err);
+      Alert.alert("Error", "Failed to save transaction");
     } finally {
       setLoading(false);
     }
@@ -75,9 +75,11 @@ export default function TransactionForm() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
+      <Text style={styles.heading}>Add Transaction</Text>
+
       <Text style={styles.label}>Amount</Text>
       <TextInput
         style={styles.input}
@@ -85,22 +87,43 @@ export default function TransactionForm() {
         value={amount}
         onChangeText={setAmount}
         placeholder="Enter amount"
+        placeholderTextColor="#9CA3AF"
       />
 
       <Text style={styles.label}>Type</Text>
       <View style={styles.toggleContainer}>
         <Pressable
-          style={[styles.toggleButton, type === 'expense' && styles.activeExpense]}
-          onPress={() => setType('expense')}
+          style={[
+            styles.toggleButton,
+            type === "expense" && styles.activeExpense,
+          ]}
+          onPress={() => setType("expense")}
         >
-          <Text style={styles.toggleText}>Expense</Text>
+          <Text
+            style={[
+              styles.toggleText,
+              type === "expense" && styles.activeTextDark,
+            ]}
+          >
+            Expense
+          </Text>
         </Pressable>
 
         <Pressable
-          style={[styles.toggleButton, type === 'income' && styles.activeIncome]}
-          onPress={() => setType('income')}
+          style={[
+            styles.toggleButton,
+            type === "income" && styles.activeIncome,
+          ]}
+          onPress={() => setType("income")}
         >
-          <Text style={styles.toggleText}>Income</Text>
+          <Text
+            style={[
+              styles.toggleText,
+              type === "income" && styles.activeTextDark,
+            ]}
+          >
+            Income
+          </Text>
         </Pressable>
       </View>
 
@@ -110,6 +133,7 @@ export default function TransactionForm() {
         value={description}
         onChangeText={setDescription}
         placeholder="Swiggy, Uber, Salary..."
+        placeholderTextColor="#9CA3AF"
       />
 
       <Pressable
@@ -117,7 +141,9 @@ export default function TransactionForm() {
         onPress={handleSubmit}
         disabled={loading}
       >
-        <Text style={styles.submitText}>{loading ? 'Saving...' : 'Add Transaction'}</Text>
+        <Text style={styles.submitText}>
+          {loading ? "Saving..." : "Add Transaction"}
+        </Text>
       </Pressable>
     </KeyboardAvoidingView>
   );
@@ -125,56 +151,76 @@ export default function TransactionForm() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    backgroundColor: '#fff',
+    flex: 1,
+    padding: 20,
+    backgroundColor: "#FFFFFF",
+  },
+  heading: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 8,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 6,
     marginTop: 12,
+    color: "#374151",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 10,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#F9FAFB",
+    color: "#111827",
   },
   toggleContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 6,
   },
   toggleButton: {
     flex: 1,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#ddd',
-    alignItems: 'center',
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+    alignItems: "center",
   },
   activeExpense: {
-    backgroundColor: '#fee2e2',
-    borderColor: '#ef4444',
+    backgroundColor: "#FEE2E2",
+    borderColor: "#EF4444",
   },
   activeIncome: {
-    backgroundColor: '#dcfce7',
-    borderColor: '#22c55e',
+    backgroundColor: "#DCFCE7",
+    borderColor: "#22C55E",
   },
   toggleText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
+  activeTextDark: {
+    color: "#111827",
   },
   submitButton: {
-    marginTop: 20,
-    backgroundColor: '#2563eb',
+    marginTop: 24,
+    backgroundColor: "#16A34A",
     paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
+    borderRadius: 999,
+    alignItems: "center",
+    shadowColor: "#16A34A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
   },
   submitText: {
-    color: '#fff',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });
