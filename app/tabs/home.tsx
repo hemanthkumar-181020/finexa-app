@@ -22,7 +22,7 @@ import { TopNavbar } from "../../components/layout/TopNavbar";
 
 export default function HomeScreen() {
   const { state } = useTransactions();
-  const { theme } = useTheme(); // still here if you need later
+  const { theme } = useTheme(); // kept as-is
   const transactions = state.transactions;
 
   const income = getTotalIncome(transactions);
@@ -43,12 +43,12 @@ export default function HomeScreen() {
           <GradientCard
             title="Income"
             subtitle={`₹ ${income.toFixed(2)}`}
-            colors={["#34D399", "#22C55E"]}
+            colors={["#5FB79A", "#A9E3D1"]}
           />
           <GradientCard
             title="Expense"
             subtitle={`₹ ${expense.toFixed(2)}`}
-            colors={["#F97373", "#EF4444"]}
+            colors={["#B96A6A", "#E3A7A7"]}
           />
         </View>
 
@@ -57,26 +57,26 @@ export default function HomeScreen() {
           <GradientCard
             title="Balance"
             subtitle={`₹ ${balance.toFixed(2)}`}
-            colors={["#60A5FA", "#3B82F6"]}
+            colors={["#4F79B8", "#9BB6E2"]}
           />
           <GradientCard
             title="Transactions"
             subtitle={`${recent.length} recent`}
-            colors={["#A855F7", "#7C3AED"]}
+            colors={["#6E4A9C", "#9F88C3"]}
           />
         </View>
 
-        {/* 3rd row – extra tiles */}
+        {/* 3rd row */}
         <View style={styles.row}>
           <GradientCard
             title="Budgets"
             subtitle="Plan your spending"
-            colors={["#FDBA74", "#F97316"]}
+            colors={["#D38A57", "#F0B183"]}
           />
           <GradientCard
             title="Insights"
             subtitle="View analytics"
-            colors={["#38BDF8", "#0EA5E9"]}
+            colors={["#3FA0AA", "#8ED0D6"]}
           />
         </View>
       </ScrollView>
@@ -85,7 +85,7 @@ export default function HomeScreen() {
 }
 
 /**
- * Single GeeksforGeeks-like card
+ * Single GFG-style gradient card
  */
 function GradientCard({
   title,
@@ -110,8 +110,8 @@ function GradientCard({
           style={[
             StyleSheet.absoluteFillObject,
             {
-              opacity: 0.7,
               backgroundColor: colors[1],
+              opacity: 0.75,
             },
           ]}
         />
