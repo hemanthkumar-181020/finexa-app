@@ -20,6 +20,8 @@ import { importBankStatement } from "../../services/bankImport";
 import { fetchTransactionsFromFirestore } from "../../services/firestoreTransactions";
 import { useAuth } from "../../services/AuthContext";
 import type { Transaction } from "../../types/transaction";
+import { useRouter } from "expo-router";
+const router = useRouter();
 
 /* ------------------- HELPERS ------------------- */
 const MONTHS = [
@@ -132,6 +134,8 @@ export default function TransactionsScreen() {
     Alert.alert("Search", "Open search screen here");
   };
 
+
+
   // Filter by month
   const filteredTransactions = state.transactions.filter((txn) => {
     const d = new Date(txn.date);
@@ -183,6 +187,7 @@ export default function TransactionsScreen() {
   }
 
   const showEmpty = !loading && !uploading && sections.length === 0;
+ 
 
   return (
     <SafeAreaView style={styles.container}>
@@ -191,16 +196,22 @@ export default function TransactionsScreen() {
         <View style={styles.headerTopRow}>
           <Text style={styles.headerTitle}>Transactions</Text>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton} onPress={handleFilterPress}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleFilterPress}
+            >
               <Ionicons name="filter" size={20} color="#E5F3E5" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={handleSearchPress}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleSearchPress}
+            >
               <Ionicons name="search" size={20} color="#E5F3E5" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* MONTH STRIP (short like original screenshot) */}
+        {/* MONTH STRIP */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -264,6 +275,14 @@ export default function TransactionsScreen() {
           contentContainerStyle={styles.listContent}
         />
       )}
+
+      {/* FLOATING ADD TRANSACTION BUTTON */}
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => router.push("/add")}
+      >
+        <Ionicons name="add" size={28} color="#020B06" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -272,7 +291,7 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#020B06", // dark green background
+    backgroundColor: "#020B06",
   },
   loadingContainer: {
     flex: 1,
@@ -403,12 +422,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  /* Empty state – image slightly below center */
+  /* Empty state */
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-start",
-    paddingTop: "30%",          // pushes image+text down ~30% of screen
+    paddingTop: "30%",
     paddingHorizontal: 24,
   },
   emptyImage: {
@@ -427,5 +446,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#9CA3AF",
     textAlign: "center",
+  },
+
+  /* ADD TRANSACTION BUTTON */
+  addButton: {
+    position: "absolute",
+    bottom: 30,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#4ADE80",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
 });

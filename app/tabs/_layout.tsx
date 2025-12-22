@@ -81,7 +81,7 @@ export default function TabsLayout() {
 
       {/* BIG CENTER CIRCLE WITH ROTATING BRAND ICONS */}
       <Tabs.Screen
-        name="add"
+        name="banks"
         options={{
           title: "Add",
           tabBarIcon: () => <RotatingBrandIcon />,
