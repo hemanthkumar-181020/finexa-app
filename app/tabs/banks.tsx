@@ -7,7 +7,7 @@ export default function Banks() {
     <View style={styles.container}>
       <Text style={styles.heading}>Choose Bank</Text>
 
-      <Pressable style={styles.card} onPress={() => router.push('/banks/phonepay')}>
+      <Pressable style={styles.card} onPress={() => router.push('/banks/phonepe')}>
         <Text style={styles.title}>PhonePe</Text>
         <Text style={styles.subtitle}>UPI • Wallet • Rewards</Text>
       </Pressable>
