@@ -133,7 +133,7 @@ export default function More() {
             styles.profileCard,
             pressed && styles.cardPressed,
           ]}
-          onPress={() => router.push('/profile' as any)}
+          onPress={() => router.push('/profile')}
         >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{avatarLetter}</Text>

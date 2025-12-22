@@ -154,12 +154,24 @@ export default function Signup() {
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
+      const defaultPhotoURL = 'https://i.pravatar.cc/150?img=12';
       await setDoc(doc(db, 'users', user.uid), {
-        username: username,
-        email: user.email,
-        createdAt: serverTimestamp(),
-      });
+      uid: user.uid,
+      email: user.email,
+      username: username,
+      name: '',
+      occupation: '',
+      phone: '',
+      dob: null,
+      gender: '',
+      photoURL: defaultPhotoURL,   // <-- Default profile photo
+      isProfileComplete: false,
+      role: 'user',
+      status: 'active',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Success', 'Account created successfully');
@@ -170,8 +182,6 @@ export default function Signup() {
       setCpassword('');
       setErrors({});
       setChecked(false);
-
-      // FIXED: Changed router path
       router.replace('./login');
       
     } catch (error: any) {

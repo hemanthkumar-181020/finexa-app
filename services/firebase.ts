@@ -7,17 +7,19 @@ import {
   getReactNativePersistence,
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage'; // ✅ Import storage
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyChxNmWVtKLf8Hv3KLon2Bpmq_Un2_1cFc',
-  authDomain: 'finexa-app-a6a96.firebaseapp.com',
-  projectId: 'finexa-app-a6a96',
-  storageBucket: 'finexa-app-a6a96.firebasestorage.app',
-  messagingSenderId: '1033553163040',
-  appId: '1:1033553163040:web:8e089c8e3af4705cdb1d45',
+  apiKey: "AIzaSyAGBdFiqd1OxLaI0-7znhxEH4UDKOP3qbs",
+  authDomain: "finexa-1c27d.firebaseapp.com",
+  databaseURL: "https://finexa-1c27d-default-rtdb.firebaseio.com",
+  projectId: "finexa-1c27d",
+  storageBucket: "finexa-1c27d.appspot.com", 
+  messagingSenderId: "898226239130",
+  appId: "1:898226239130:web:4625a353957b0d9d691123",
+  measurementId: "G-0T69N4LZ65"
 };
-
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
@@ -25,7 +27,6 @@ let auth: Auth;
 
 try {
   auth = initializeAuth(app, {
-    // TS complains about typings, but this works at runtime
     persistence: getReactNativePersistence(AsyncStorage),
   });
 } catch {
@@ -34,3 +35,4 @@ try {
 
 export { auth };
 export const db = getFirestore(app);
+export const storage = getStorage(app); // ✅ Initialize storage
