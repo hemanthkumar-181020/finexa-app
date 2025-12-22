@@ -2,6 +2,8 @@ import * as Haptics from 'expo-haptics';
 import { Link, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { doc, getDoc } from 'firebase/firestore';
+
 import {
   Alert,
   Animated,
@@ -58,7 +60,7 @@ export default function Login() {
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-
+  
   useState(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -158,7 +160,29 @@ export default function Login() {
       Alert.alert('Success', 'Login successful!');
       
       // Navigate after successful login
-      router.replace('/tabs/home');
+                  const user = auth.currentUser;
+
+            if (!user) {
+              throw new Error('User not authenticated');
+            }
+
+            const userRef = doc(db, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+              // Safety fallback
+              router.replace('/completeprofile');
+              return;
+            }
+
+            const userData = userSnap.data();
+
+            if (!userData.isProfileComplete) {
+              router.replace('/completeprofile');
+            } else {
+              router.replace('/tabs/home');
+            }
+
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       
