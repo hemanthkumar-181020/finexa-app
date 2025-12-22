@@ -9,13 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useTransactions } from "../../context/TransactionContext";
+import { useTransactions } from "../context/TransactionContext";
 import {
   fetchTransactionsFromFirestore,
   saveManualTransactionToFirestore,
-} from "../../services/firestoreTransactions";
-import { autoCategorize } from "../../utils/categorize";
-import { useAuth } from "../../services/AuthContext";
+} from "../services/firestoreTransactions";
+import { autoCategorize } from "../utils/categorize";
+import { useAuth } from "../services/AuthContext";
 
 export default function TransactionForm() {
   const { dispatch } = useTransactions();
