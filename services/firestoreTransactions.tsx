@@ -9,11 +9,13 @@ import {
   writeBatch,
   doc,
   getCountFromServer,
-  limit,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Transaction } from '../types/transaction';
-
+import { getDoc } from 'firebase/firestore';
 // Helper function for safe error logging
 const getSafeErrorDetails = (error: any) => {
   if (!error) return { code: 'NO_ERROR', message: 'No error object provided' };
@@ -119,9 +121,9 @@ export async function saveTransactionsToFirestore(
         date: Timestamp.fromDate(transactionDate),
         note: t.description?.trim() || '',
         source: 'bank',
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-        importedAt: Timestamp.now(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        importedAt: serverTimestamp(),
       };
       
       // Only add UTR field if it exists
@@ -216,8 +218,8 @@ export async function saveManualTransactionToFirestore(
       Timestamp.now(),
     source: 'manual',
     // No utr field at all for manual transactions
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   };
 
   try {
@@ -228,6 +230,164 @@ export async function saveManualTransactionToFirestore(
     const errorDetails = getSafeErrorDetails(error);
     console.error('❌ Error saving manual transaction:', errorDetails);
     throw error;
+  }
+}
+
+/* UPDATE TRANSACTION IN FIRESTORE - FIXED */
+export async function updateTransactionInFirestore(
+  uid: string,
+  transactionId: string,
+  transactionData: Partial<Transaction>
+): Promise<void> {
+  console.log(`✏️ Updating transaction for UID: ${uid}, ID: ${transactionId}`);
+  console.log(`📝 Update data received:`, transactionData);
+  
+  if (!uid || uid.trim() === '') {
+    throw new Error('❌ Invalid UID provided');
+  }
+  
+  if (!transactionId || transactionId.trim() === '') {
+    throw new Error('❌ Invalid transaction ID');
+  }
+
+  try {
+    const transactionRef = doc(db, 'users', uid, 'transactions', transactionId);
+    
+    // Prepare update data - ONLY update fields that should change
+    const updateData: any = {
+      updatedAt: serverTimestamp(),
+    };
+    
+    // Only update these specific fields if they're provided
+    if (transactionData.amount !== undefined) {
+      updateData.amount = transactionData.amount;
+    }
+    
+    if (transactionData.type !== undefined) {
+      updateData.type = transactionData.type;
+    }
+    
+    if (transactionData.category !== undefined) {
+      updateData.category = transactionData.category;
+    }
+    
+    if (transactionData.note !== undefined) {
+      updateData.note = transactionData.note;
+    }
+    
+    // Convert date string to Firestore Timestamp if it exists
+    if (transactionData.date && typeof transactionData.date === 'string') {
+      const date = new Date(transactionData.date);
+      if (!isNaN(date.getTime())) {
+        updateData.date = Timestamp.fromDate(date);
+      } else {
+        console.warn('⚠️ Invalid date format in update, skipping date update');
+      }
+    }
+    
+    // DO NOT update these fields:
+    // - id: Document ID (shouldn't change)
+    // - source: Preserve original source (manual/bank)
+    // - utr: Preserve original UTR (important for bank transactions)
+    // - uid: User ID (shouldn't change)
+    // - createdAt: Creation timestamp (should never change)
+    // - importedAt: Import timestamp (for bank transactions)
+    
+    console.log(`📤 Final update payload to Firestore:`, updateData);
+    
+    if (Object.keys(updateData).length > 1) { // More than just updatedAt
+      await updateDoc(transactionRef, updateData);
+      console.log(`✅ Transaction ${transactionId} updated successfully in Firestore`);
+    } else {
+      console.log(`⚠️ No valid fields to update`);
+    }
+  } catch (error) {
+    const errorDetails = getSafeErrorDetails(error);
+    console.error('❌ Error updating transaction:', errorDetails);
+    throw error;
+  }
+}
+
+/* DELETE TRANSACTION FROM FIRESTORE */
+export async function deleteTransactionFromFirestore(
+  uid: string,
+  transactionId: string
+): Promise<void> {
+  console.log(`🗑️ Deleting transaction for UID: ${uid}, ID: ${transactionId}`);
+  
+  if (!uid || uid.trim() === '') {
+    throw new Error('❌ Invalid UID provided');
+  }
+  
+  if (!transactionId || transactionId.trim() === '') {
+    throw new Error('❌ Invalid transaction ID');
+  }
+
+  try {
+    const transactionRef = doc(db, 'users', uid, 'transactions', transactionId);
+    await deleteDoc(transactionRef);
+    console.log(`✅ Transaction ${transactionId} deleted successfully`);
+  } catch (error) {
+    const errorDetails = getSafeErrorDetails(error);
+    console.error('❌ Error deleting transaction:', errorDetails);
+    throw error;
+  }
+}
+
+/* GET SINGLE TRANSACTION BY ID */
+export async function getTransactionById(
+  uid: string,
+  transactionId: string
+): Promise<Transaction | null> {
+  console.log(`🔍 Fetching transaction ${transactionId} for UID: ${uid}`);
+  
+  try {
+    const transactionRef = doc(db, 'users', uid, 'transactions', transactionId);
+    const snapshot = await getDoc(transactionRef);
+    
+    if (!snapshot.exists()) {
+      console.log(`❌ Transaction ${transactionId} not found`);
+      return null;
+    }
+    
+    const d = snapshot.data();
+    
+    // Convert Firestore Timestamp to ISO string
+    let dateString: string;
+    try {
+      if (d.date && d.date.toDate) {
+        dateString = d.date.toDate().toISOString();
+      } else {
+        console.warn(`⚠️ Transaction ${transactionId} has no valid date, using current date`);
+        dateString = new Date().toISOString();
+      }
+    } catch (error) {
+      console.error(`❌ Error parsing date for transaction ${transactionId}:`, error);
+      dateString = new Date().toISOString();
+    }
+    
+    // Check if UTR exists in the document
+    const hasUTR = 'utr' in d && d.utr !== undefined && d.utr !== null && d.utr.trim() !== '';
+    
+    const transaction: Transaction = {
+      id: snapshot.id,
+      amount: d.amount || 0,
+      type: d.type || 'expense',
+      category: d.category || 'Uncategorized',
+      date: dateString,
+      note: d.note || '',
+      source: d.source || 'manual',
+      utr: hasUTR ? d.utr.trim() : undefined,
+      createdAt: d.createdAt?.toDate?.()?.toISOString() || dateString,
+      updatedAt: d.updatedAt?.toDate?.()?.toISOString() || dateString,
+    };
+    
+    console.log(`✅ Transaction ${transactionId} fetched successfully`);
+    return transaction;
+  } catch (error) {
+    const errorDetails = getSafeErrorDetails(error);
+    console.error(`❌ Error fetching transaction ${transactionId}:`, errorDetails);
+    return null;
   }
 }
 
@@ -295,6 +455,9 @@ export async function fetchTransactionsFromFirestore(
         source: d.source || 'manual',
         // Only include utr if it exists and is not empty
         utr: hasUTR ? d.utr.trim() : undefined,
+        // Include timestamps if they exist
+        createdAt: d.createdAt?.toDate?.()?.toISOString() || dateString,
+        updatedAt: d.updatedAt?.toDate?.()?.toISOString() || dateString,
       };
       
       // Count statistics
@@ -313,6 +476,8 @@ export async function fetchTransactionsFromFirestore(
       
       transactions.push(transaction);
     });
+    
+    console.log(`📊 Statistics - Bank: ${bankTransactionsCount}, Manual: ${manualTransactionsCount}, With UTR: ${utrCount}`);
     
     return transactions;
   } catch (error) {
@@ -368,7 +533,7 @@ export async function testFirestoreConnection(uid: string): Promise<boolean> {
     const testRef = collection(db, 'users', uid, '_connection_test');
     const testData = {
       test: true,
-      timestamp: Timestamp.now(),
+      timestamp: serverTimestamp(),
       message: 'Firestore connection test'
     };
     

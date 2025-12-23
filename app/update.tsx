@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,11 +13,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useTransactions } from "../context/TransactionContext";
-import { saveManualTransactionToFirestore } from "../services/firestoreTransactions";
+import { updateTransactionInFirestore } from "../services/firestoreTransactions";
 import { useAuth } from "../services/AuthContext";
+import type { Transaction } from "../types/transaction";
 
 const CATEGORIES = [
   "Food & Dining",
@@ -34,8 +35,9 @@ const CATEGORIES = [
   "Other",
 ];
 
-export default function AddTransactionScreen() {
+export default function UpdateTransactionScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { user } = useAuth();
   const { dispatch } = useTransactions();
 
@@ -46,6 +48,26 @@ export default function AddTransactionScreen() {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [type, setType] = useState<"income" | "expense">("expense");
+  const [transactionId, setTransactionId] = useState("");
+
+  // Parse transaction data from params
+  useEffect(() => {
+    if (params.transaction) {
+      try {
+        const transaction = JSON.parse(params.transaction as string) as Transaction;
+        setTransactionId(transaction.id);
+        setAmount(transaction.amount.toString());
+        setNote(transaction.note || "");
+        setCategory(transaction.category || "");
+        setDate(new Date(transaction.date));
+        setType(transaction.type);
+      } catch (error) {
+        console.error("Error parsing transaction:", error);
+        Alert.alert("Error", "Failed to load transaction data");
+        router.back();
+      }
+    }
+  }, [params.transaction]);
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === "ios");
@@ -54,7 +76,7 @@ export default function AddTransactionScreen() {
     }
   };
 
-  const handleAddTransaction = async () => {
+  const handleUpdate = async () => {
     // Validation
     if (!amount || parseFloat(amount) <= 0) {
       Alert.alert("Error", "Please enter a valid amount");
@@ -69,61 +91,42 @@ export default function AddTransactionScreen() {
       return;
     }
 
-    if (!user) {
-      Alert.alert("Error", "Please log in to add transactions");
+    if (!user || !transactionId) {
+      Alert.alert("Error", "Invalid transaction data");
       return;
     }
 
     setLoading(true);
 
     try {
-      const transactionId = await saveManualTransactionToFirestore(user.uid, {
-        amount: parseFloat(amount),
-        type,
-        category,
-        note: note.trim(),
-        date,
-      });
-
-      // Create transaction object for local state
-      const newTransaction = {
+      const updatedTransaction: Transaction = {
         id: transactionId,
         amount: parseFloat(amount),
-        type,
-        category,
         note: note.trim(),
+        category,
         date: date.toISOString(),
-        source: "manual",
+        type,
+        source: "manual", 
         uid: user.uid,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      // Add to local state
+      // Update in Firestore
+      await updateTransactionInFirestore(user.uid, transactionId, updatedTransaction);
+
+      // Update in local state
       dispatch({
-        type: "ADD_TRANSACTION",
-        payload: newTransaction,
+        type: "UPDATE_TRANSACTION",
+        payload: updatedTransaction,
       });
 
-      Alert.alert("Success", "Transaction added successfully!", [
-        { 
-          text: "OK", 
-          onPress: () => {
-            // Reset form
-            setAmount("");
-            setNote("");
-            setCategory("");
-            setDate(new Date());
-            setType("expense");
-            
-            // Navigate back
-            router.back();
-          }
-        },
+      Alert.alert("Success", "Transaction updated successfully!", [
+        { text: "OK", onPress: () => router.back() },
       ]);
-    } catch (error: any) {
-      console.error("Add transaction error:", error);
-      Alert.alert("Error", error.message || "Failed to add transaction");
+    } catch (error) {
+      console.error("Update error:", error);
+      Alert.alert("Error", "Failed to update transaction");
     } finally {
       setLoading(false);
     }
@@ -135,7 +138,7 @@ export default function AddTransactionScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#E5F3E5" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Transaction</Text>
+        <Text style={styles.headerTitle}>Edit Transaction</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -249,19 +252,19 @@ export default function AddTransactionScreen() {
         </View>
       </ScrollView>
 
-      {/* Add Button */}
+      {/* Update Button */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.addButton, loading && styles.addButtonDisabled]}
-          onPress={handleAddTransaction}
+          style={[styles.updateButton, loading && styles.updateButtonDisabled]}
+          onPress={handleUpdate}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#020B06" />
           ) : (
             <>
-              <Ionicons name="add-circle" size={20} color="#020B06" />
-              <Text style={styles.addButtonText}>Add Transaction</Text>
+              <Ionicons name="checkmark-circle" size={20} color="#020B06" />
+              <Text style={styles.updateButtonText}>Update Transaction</Text>
             </>
           )}
         </TouchableOpacity>
@@ -404,7 +407,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#1A231E",
   },
-  addButton: {
+  updateButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -413,10 +416,10 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 8,
   },
-  addButtonDisabled: {
+  updateButtonDisabled: {
     opacity: 0.7,
   },
-  addButtonText: {
+  updateButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#020B06",
