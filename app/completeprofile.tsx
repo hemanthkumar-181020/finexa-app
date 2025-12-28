@@ -2,6 +2,8 @@ import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   View,
   Text,
@@ -30,6 +32,9 @@ export default function CompleteProfile() {
   const [gender, setGender] = useState('');
   const [photoURI, setPhotoURI] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dobDate, setDobDate] = useState<Date | null>(null);
+
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
@@ -111,6 +116,18 @@ export default function CompleteProfile() {
     const downloadURL = await getDownloadURL(storageRef);
     return downloadURL;
   };
+
+  const onDateChange = (_: any, selectedDate?: Date) => {
+  setShowDatePicker(false);
+
+  if (selectedDate) {
+    setDobDate(selectedDate);
+
+    // Format as YYYY-MM-DD
+    const formatted = selectedDate.toISOString().split('T')[0];
+    setDob(formatted);
+  }
+};
 
   const submit = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -216,7 +233,7 @@ export default function CompleteProfile() {
                   />
                 </View>
 
-                <View style={styles.inputWrapper}>
+                {/* <View style={styles.inputWrapper}>
                   <TextInput
                     placeholder="DOB (YYYY-MM-DD)"
                     placeholderTextColor="#9CA3AF"
@@ -224,9 +241,19 @@ export default function CompleteProfile() {
                     value={dob}
                     onChangeText={setDob}
                   />
-                </View>
+                </View> */}
+                <TouchableOpacity
+                  style={styles.inputWrapper}
+                  activeOpacity={0.8}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={[styles.input, !dob && { color: '#9CA3AF' }]}>
+                    {dob || 'Date of Birth'}
+                  </Text>
+                </TouchableOpacity>
 
-                <View style={styles.inputWrapper}>
+
+                {/* <View style={styles.inputWrapper}>
                   <TextInput
                     placeholder="Gender (Optional)"
                     placeholderTextColor="#9CA3AF"
@@ -234,7 +261,68 @@ export default function CompleteProfile() {
                     value={gender}
                     onChangeText={setGender}
                   />
+                </View> */}
+                <Text style={styles.genderLabel}>Gender (Optional)</Text>
+
+                <View style={styles.genderRow}>
+                  {['Male', 'Female', 'Other'].map((item) => {
+                    const selected = gender === item;
+
+                    return (
+                      <TouchableOpacity
+                        key={item}
+                        activeOpacity={0.85}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setGender(gender === item ? '' : item);
+                        }}
+                        style={[
+                          styles.genderChip,
+                          selected && styles.genderChipActive,
+                        ]}
+                      >
+                        <View style={styles.genderChipContent}>
+                          <Ionicons
+                            name={
+                              item === 'Male'
+                                ? 'male'
+                                : item === 'Female'
+                                ? 'female'
+                                : 'transgender'
+                            }
+                            size={16}
+                            color={gender === item ? '#000' : '#6EE7B7'}
+                          />
+
+                          <Text
+                            style={[
+                              styles.genderText,
+                              gender === item && styles.genderTextActive,
+                            ]}
+                          >
+                            {item}
+                          </Text>
+                        </View>
+
+                          {item}
+                        
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
+
+                
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={dobDate || new Date(2000, 0, 1)}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                    maximumDate={new Date()} // cannot select future DOB
+                    onChange={onDateChange}
+                  />
+                )}
+
+
 
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -310,4 +398,50 @@ const styles = StyleSheet.create({
   },
   photo: { width: 100, height: 100, borderRadius: 50 },
   photoText: { color: '#6EE7B7', fontSize: 14 },
+  genderLabel: {
+  color: '#9CA3AF',
+  fontSize: 13,
+  marginBottom: 8,
+  marginTop: 4,
+},
+
+genderRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginBottom: 18,
+},
+
+genderChip: {
+  flex: 1,
+  borderWidth: 1,
+  borderColor: '#0EA5E9',
+  borderRadius: 14,
+  paddingVertical: 12,
+  alignItems: 'center',
+  marginHorizontal: 4,
+  backgroundColor: 'transparent',
+},
+
+genderChipActive: {
+  backgroundColor: '#0EA5E9',
+},
+
+genderText: {
+  color: '#6EE7B7',
+  fontSize: 14,
+  fontWeight: '500',
+},
+
+genderTextActive: {
+  color: '#000',
+  fontWeight: '600',
+},
+genderChipContent: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 6,
+},
+
+
+
 });

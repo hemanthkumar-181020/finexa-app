@@ -1696,6 +1696,8 @@ import Svg, { G, Path, Circle } from 'react-native-svg';
 import { Transaction } from '../../types/transaction';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORY_DESCRIPTIONS, ALL_CATEGORIES } from '../../utils/categories';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 
 type Props = {
   transactions: Transaction[];
@@ -1708,6 +1710,7 @@ const CHART_SIZE = Math.min(screenWidth - 80, 280); // Reduced size
 const CENTER = CHART_SIZE / 2;
 const OUTER_RADIUS = CENTER - 20; // Reduced outer radius
 const INNER_RADIUS = OUTER_RADIUS * 0.5; // Smaller inner hole
+const [barWidth, setBarWidth] = useState(0);
 
 // Updated color pairs - more distinct colors
 // Use only your specified 10 color pairs
@@ -2122,7 +2125,7 @@ export function ExpensePieChart({ transactions }: Props) {
                 </View>
               </View>
               
-              <View style={styles.legendWrapper}>
+              {/* <View style={styles.legendWrapper}>
                 {data.map((item, index) => {
                   const isActive = activeIndex === index;
                   const percentage = totalSpent > 0 ? ((item.amount / totalSpent) * 100).toFixed(1) : '0.0';
@@ -2189,43 +2192,104 @@ export function ExpensePieChart({ transactions }: Props) {
                     </Pressable>
                   );
                 })}
+              </View> */}
+              <View style={styles.categoryGrid}>
+              {data.map((item, index) => {
+                
+                 const percentage = totalSpent > 0 ? Math.min((item.amount / totalSpent) * 100, 100) : 0;
+
+                return (
+                  <Pressable
+                    key={item.name}
+                    onPress={() => {
+                       Haptics.selectionAsync();
+                       handleSegmentPress(index);}
+                    }
+                    style={styles.categoryRowWrapper}
+                  >
+                    <LinearGradient
+                      colors={[item.lightColor, item.color]}
+                      start={{ x: 1, y: 0 }}
+                      end={{ x: 0, y: 0 }}
+                      style={styles.categoryRowCard}
+                    >
+                      {/* Icon */}
+                      <View style={styles.rowIcon}>
+                        <Ionicons
+                          name={getCategoryIcon(item.name) as any}
+                          size={20}
+                          color="#fff"
+                        />
+                      </View>
+
+                      {/* Center: Name + Progress */}
+                      <View style={styles.rowCenter}>
+                        <Text style={styles.rowTitle} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+
+                        {/* Progress Bar */}
+                        <View style={styles.progressBar}>
+                          <View style={[styles.progressFill, { flex: percentage }]} />
+                          <View style={{ flex: 100 - percentage }} />
+                        </View>
+
+
+
+                        <Text style={styles.rowSub}>
+                          {percentage.toFixed(1)}% • {item.count} trx
+                        </Text>
+                      </View>
+
+
+                      {/* Amount */}
+                      <Text style={styles.rowAmount}>
+                        ₹{item.amount.toLocaleString('en-IN')}
+                      </Text>
+                      
+                    </LinearGradient>
+                </Pressable>
+
+                  );
+                })}
               </View>
+
+              </View>
+
+              {/* Hint Section */}
+              {activeIndex !== null && (
+                <View style={styles.hintContainer}>
+                  <Ionicons name="information-circle-outline" size={12} color="#6C6FCF" />
+                  <Text style={styles.tapHint}>Tap anywhere to deselect</Text>
+                </View>
+              )}
             </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
 
-            {/* Hint Section */}
-            {activeIndex !== null && (
-              <View style={styles.hintContainer}>
-                <Ionicons name="information-circle-outline" size={12} color="#6C6FCF" />
-                <Text style={styles.tapHint}>Tap anywhere to deselect</Text>
-              </View>
-            )}
-          </View>
-        </TouchableWithoutFeedback>
-      </ScrollView>
-
-      {/* Category Selection Modal */}
-      <Modal
-        visible={showCategoryModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCategoryModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Select Categories</Text>
-                <Text style={styles.modalSubtitle}>
-                  Choose categories to compare
-                </Text>
-              </View>
-              <Pressable 
-                style={styles.closeButton}
-                onPress={() => setShowCategoryModal(false)}
-              >
-                <Ionicons name="close" size={20} color="#374151" />
-              </Pressable>
+        {/* Category Selection Modal */}
+        <Modal
+          visible={showCategoryModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowCategoryModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={styles.modalTitle}>Select Categories</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Choose categories to compare
+                  </Text>
+                </View>
+                <Pressable 
+                  style={styles.closeButton}
+                  onPress={() => setShowCategoryModal(false)}
+                >
+                  <Ionicons name="close" size={20} color="#374151" />
+                </Pressable>
             </View>
 
             {/* Modal Actions */}
@@ -2650,15 +2714,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   progressBar: {
-    height: 4,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
+  flexDirection: 'row',
+  height: 6,
+  backgroundColor: 'rgba(255,255,255,0.25)',
+  borderRadius: 4,
+  overflow: 'hidden',
+  marginTop: 6,
+},
+
+progressFill: {
+  backgroundColor: 'rgba(255,255,255,0.85)',
+  borderRadius: 4,
+},
+
+
   progressLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -2795,6 +2864,7 @@ const styles = StyleSheet.create({
   categoryList: {
     maxHeight: 360,
     paddingHorizontal: 4,
+    flexDirection: 'column',
   },
   categoryItem: {
     flexDirection: 'row',
@@ -2901,4 +2971,73 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+  categoryGrid: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  justifyContent: 'space-between',
+  marginTop: 12,
+},
+
+categoryRowWrapper: {
+  width: '100%',          // 🔴 FULL WIDTH
+  marginBottom: 14,
+},
+
+categoryRowCard: {
+  width: '100%',          // 🔴 FULL WIDTH
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 18,
+  paddingHorizontal: 16,
+  borderRadius: 18,
+},
+
+rowIcon: {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  backgroundColor: 'rgba(255,255,255,0.25)',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginRight: 14,
+},
+
+rowTitle: {
+  flex: 1,                // 🔴 PUSH amount to right
+  color: '#fff',
+  fontSize: 15,
+  fontWeight: '700',
+},
+
+rowAmount: {
+  color: '#fff',
+  fontSize: 15,
+  fontWeight: '700',
+},
+rowCenter: {
+  flex: 1,
+  marginRight: 12,
+},
+
+// progressBar: {
+//   height: 6,
+//   backgroundColor: 'rgba(255,255,255,0.35)', // track
+//   borderRadius: 4,
+//   overflow: 'hidden',
+//   marginTop: 6,
+//   marginBottom: 4,
+// },
+
+// progressFill: {
+//   height: '100%',
+//   backgroundColor: '#FFFFFF', // white bar
+//   borderRadius: 4,
+// },
+
+rowSub: {
+  fontSize: 12,
+  color: 'rgba(255,255,255,0.85)',
+},
+   
+
 });
