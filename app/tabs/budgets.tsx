@@ -12,6 +12,7 @@ export default function BudgetsScreen() {
 
   return (
     <SafeAreaView
+     edges={['top']}  
       style={[
         styles.container,
         { backgroundColor: isDark ? '#020617' : '#f9fafb' },
@@ -25,6 +26,5 @@ export default function BudgetsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
   },
 });
