@@ -1,116 +1,263 @@
-// components/layout/TopNavbar.tsx
-import React from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  Alert,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
-type TopNavbarProps = {
-  onMenuPress?: () => void;
-  onNotificationsPress?: () => void;
-};
+import { useAuth } from "../../services/AuthContext";
 
-export function TopNavbar({
-  onMenuPress,
-  onNotificationsPress,
-}: TopNavbarProps) {
+export function TopNavbar() {
+  const [menuVisible, setMenuVisible] = useState(false);
+  const router = useRouter();
+  const { userProfile, signOut } = useAuth();
+
+  const displayName = userProfile?.username || "User";
+  const displayEmail = userProfile?.email || "";
+  const avatarLetter = displayName.charAt(0).toUpperCase();
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch {
+            Alert.alert("Error", "Failed to logout. Please try again.");
+          }
+        },
+      },
+    ]);
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.row}>
-        {/* Left: hamburger + logo + name */}
-        <View style={styles.leftGroup}>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={onMenuPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={24} color="#111827" />
-          </TouchableOpacity>
-
-          <View style={styles.brand}>
-            <View style={styles.logoWrapper}>
-              <Image
-                source={require("../../assets/images/logo.png")}
-                style={styles.logo}
-                resizeMode="cover"
-              />
-            </View>
-            <Text style={styles.appName}>Finexa</Text>
-          </View>
-        </View>
-
-        {/* Right: notification icon */}
+    <>
+      {/* ================= TOP BAR ================= */}
+      <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={onNotificationsPress}
-          activeOpacity={0.7}
+          onPress={() => setMenuVisible(true)}
         >
-          <Ionicons name="notifications-outline" size={22} color="#111827" />
+          <Ionicons name="menu" size={24} color="#111827" />
+        </TouchableOpacity>
+
+        <Text style={styles.appName}>Finexa</Text>
+
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => router.push("/")}
+        >
+          <Ionicons
+            name="notifications-outline"
+            size={22}
+            color="#111827"
+          />
         </TouchableOpacity>
       </View>
-    </View>
+
+      {/* ================= SIDE MENU ================= */}
+      <Modal visible={menuVisible} animationType="slide" transparent>
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menu}>
+            {/* USER HEADER */}
+            <LinearGradient
+              colors={["#0284c7", "#22c1c3"]}
+              style={styles.userHeader}
+            >
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{avatarLetter}</Text>
+              </View>
+
+              <Text style={styles.userName}>{displayName}</Text>
+              <Text style={styles.userEmail}>{displayEmail}</Text>
+
+              <TouchableOpacity
+                style={styles.profileBtn}
+                onPress={() => {
+                  setMenuVisible(false);
+                  router.push("/profile");
+                }}
+              >
+                <Text style={styles.profileBtnText}>View Profile</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+
+            {/* MENU ITEMS */}
+            <MenuItem
+              icon="grid-outline"
+              label="Categories"
+              onPress={() => router.push("/add")}
+            />
+            <MenuItem
+              icon="wallet-outline"
+              label="Wallets"
+              onPress={() => router.push("/add")}
+            />
+            <MenuItem
+              icon="settings-outline"
+              label="Settings"
+              onPress={() => router.push("/add")}
+            />
+            <MenuItem
+              icon="help-circle-outline"
+              label="Help & Support"
+              onPress={() => router.push("/add")}
+            />
+
+            <View style={styles.divider} />
+
+            <MenuItem
+              icon="log-out-outline"
+              label="Logout"
+              danger
+              onPress={handleLogout}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
   );
 }
 
+/* ================= MENU ITEM ================= */
+function MenuItem({
+  icon,
+  label,
+  onPress,
+  danger,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress?: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+      <Ionicons
+        name={icon}
+        size={20}
+        color={danger ? "#DC2626" : "#111827"}
+      />
+      <Text
+        style={[
+          styles.menuText,
+          danger && { color: "#DC2626", fontWeight: "600" },
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+/* ================= STYLES ================= */
 const styles = StyleSheet.create({
-  container: {
+  topBar: {
     paddingTop: 28,
     paddingBottom: 14,
     paddingHorizontal: 16,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  leftGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  menuButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
-  },
-  brand: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  logoWrapper: {
+  iconButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#000000",
-    borderWidth: 1,
-    borderColor: "#111827",
-    justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
-  },
-  logo: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    justifyContent: "center",
   },
   appName: {
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#111827",
   },
-  iconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
+
+  /* MENU */
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  menu: {
+    width: "78%",
+    height: "100%",
+    backgroundColor: "#FFFFFF",
+  },
+
+  /* USER HEADER */
+  userHeader: {
+    paddingTop: 56,
+    paddingBottom: 24,
     alignItems: "center",
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#0ea5e9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  avatarText: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#e0f2fe",
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#f9fafb",
+  },
+  userEmail: {
+    fontSize: 13,
+    color: "#e0f2fe",
+    marginTop: 2,
+  },
+  profileBtn: {
+    marginTop: 10,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  profileBtnText: {
+    color: "#f9fafb",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+
+  /* MENU ITEMS */
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  menuText: {
+    marginLeft: 14,
+    fontSize: 16,
+    color: "#111827",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginVertical: 12,
   },
 });

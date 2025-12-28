@@ -12,8 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { useAuth } from '../../services/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../services/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function More() {
   const router = useRouter();
