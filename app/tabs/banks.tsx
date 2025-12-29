@@ -64,7 +64,30 @@ export default function Banks() {
           </View>
         </View>
       </Pressable>
+      
+<Pressable
+  style={styles.card}
+  onPress={() => router.push("/banks/messages")}
+>
+  <View style={styles.row}>
+    <View style={styles.logoWrapper}>
+      <Image
+        source={require("../../assets/images/message.jpeg")}
+        style={styles.logo}
+      />
     </View>
+
+    <View style={styles.textBlock}>
+      <Text style={styles.title}>Messages</Text>
+      <Text style={styles.subtitle}>
+        Import transactions from SMS
+      </Text>
+    </View>
+  </View>
+</Pressable>
+
+    </View>
+    
   );
 }
 
