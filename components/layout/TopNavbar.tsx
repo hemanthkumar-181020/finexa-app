@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -43,6 +44,7 @@ export function TopNavbar() {
     <>
       {/* ================= TOP BAR ================= */}
       <View style={styles.topBar}>
+        {/* LEFT: HAMBURGER */}
         <TouchableOpacity
           style={styles.iconButton}
           onPress={() => setMenuVisible(true)}
@@ -50,8 +52,19 @@ export function TopNavbar() {
           <Ionicons name="menu" size={24} color="#111827" />
         </TouchableOpacity>
 
-        <Text style={styles.appName}>Finexa</Text>
+        {/* LEFT-CENTER: LOGO + NAME (same row, like screenshot) */}
+        <View style={styles.logoRow}>
+          <View style={styles.logoCircle}>
+            <Image
+              source={require("../../assets/images/logo.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.appName}>Finexa</Text>
+        </View>
 
+        {/* RIGHT: BELL */}
         <TouchableOpacity
           style={styles.iconButton}
           onPress={() => router.push("/")}
@@ -99,22 +112,34 @@ export function TopNavbar() {
             <MenuItem
               icon="grid-outline"
               label="Categories"
-              onPress={() => router.push("/add")}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push("/add");
+              }}
             />
             <MenuItem
               icon="wallet-outline"
               label="Wallets"
-              onPress={() => router.push("/add")}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push("/add");
+              }}
             />
             <MenuItem
               icon="settings-outline"
               label="Settings"
-              onPress={() => router.push("/add")}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push("/add");
+              }}
             />
             <MenuItem
               icon="help-circle-outline"
               label="Help & Support"
-              onPress={() => router.push("/add")}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push("/add");
+              }}
             />
 
             <View style={styles.divider} />
@@ -165,6 +190,7 @@ function MenuItem({
 
 /* ================= STYLES ================= */
 const styles = StyleSheet.create({
+  /* TOP BAR */
   topBar: {
     paddingTop: 28,
     paddingBottom: 14,
@@ -183,13 +209,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
+  // logo + Finexa text, left side (not centered)
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginLeft: 8,
+  },
+  logoCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#020617",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoImage: {
+    width: 26,
+    height: 26,
+  },
   appName: {
     fontSize: 20,
     fontWeight: "800",
     color: "#111827",
+    marginLeft: 10,
   },
 
-  /* MENU */
+  /* MENU OVERLAY */
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.35)",
