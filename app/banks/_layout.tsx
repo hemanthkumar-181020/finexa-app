@@ -6,6 +6,7 @@ export default function bankLayout() {
       <Stack.Screen name="phonepe" />
       <Stack.Screen name="sbi" />
       <Stack.Screen name="icici" />
+      <Stack.Screen name="messages" />
     </Stack>
   );
 }
