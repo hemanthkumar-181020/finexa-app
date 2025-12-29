@@ -1,5 +1,5 @@
 import { Tabs, Redirect } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons,Octicons,MaterialIcons} from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View, Image, StyleSheet } from "react-native";
 import { useAuth } from "../../services/AuthContext";
@@ -64,7 +64,7 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <Octicons name="home" size={size} color={color} />
           ),
         }}
       />
@@ -104,7 +104,7 @@ export default function TabsLayout() {
         options={{
           title: "analytics",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="ellipsis-horizontal" size={size} color={color} />
+            <MaterialIcons name="analytics" size={size} color={color} />
           ),
         }}
       />
