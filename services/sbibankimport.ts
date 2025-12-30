@@ -1,7 +1,7 @@
 import type { DocumentPickerAsset } from 'expo-document-picker';
 import { saveTransactionsToFirestore } from './firestoreTransactions';
 
-const SBI_BASE_URL = 'https://sbi-pdf-extract.vercel.app';
+const SBI_BASE_URL = 'https://sbi-pdf-extract-finexa.vercel.app/';
 
 type ParsedTransaction = {
   amount: number | string;

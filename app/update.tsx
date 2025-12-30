@@ -21,18 +21,34 @@ import { useAuth } from "../services/AuthContext";
 import type { Transaction } from "../types/transaction";
 
 const CATEGORIES = [
+  "Income / Transfer In",
+
+  // Core Expenses
+  "Recharge",
   "Food & Dining",
+  "Fuel",
   "Shopping",
-  "Transportation",
+  "Groceries",
+  "Travel",
   "Entertainment",
-  "Bills & Utilities",
-  "Healthcare",
+  "Utilities",
   "Education",
-  "Investment",
-  "Salary",
-  "Freelance",
-  "Gifts",
-  "Other",
+  "Healthcare",
+  "Banking & Finance",
+  "Transfer Out",
+
+  // Extended Coverage
+  "Personal Care",
+  "Home & Kitchen",
+  "Gifts & Donations",
+  "Business Expenses",
+  "Hobbies & Leisure",
+  "Vehicle Maintenance",
+  "Child & Family",
+  "Technology & Software",
+
+  // Fallback
+  "Other Expense",
 ];
 
 export default function UpdateTransactionScreen() {
