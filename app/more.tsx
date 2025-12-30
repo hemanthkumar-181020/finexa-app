@@ -1,4 +1,3 @@
-// app/tabs/more.tsx
 import React from 'react';
 import {
   View,
@@ -8,7 +7,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -21,369 +20,292 @@ export default function More() {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
 
-  type ItemProps = {
-    icon: keyof typeof Ionicons.glyphMap;
-    title: string;
-    value?: string;
-    route?: string;
-    danger?: boolean;
-    onPress?: () => void;
-  };
-
   const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
+    Alert.alert('Logout', 'Sign out of Finexa?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch {
-            Alert.alert('Error', 'Failed to logout. Please try again.');
-          }
-        },
+      { text: 'Logout', style: 'destructive', onPress: async () => {
+          try { await signOut(); } catch { Alert.alert('Error', 'Failed to logout.'); }
+        }
       },
     ]);
   };
 
-  const Item = ({
-    icon,
-    title,
-    value,
-    route,
-    danger = false,
-    onPress,
-  }: ItemProps) => (
+  // Premium Link Component
+  const MenuLink = ({ icon, title, route, color = '#10b981', isMCI = false, subtitle }: any) => (
     <Pressable
-      onPress={() => {
-        if (onPress) onPress();
-        else if (route) router.push(route as any);
-      }}
-      style={({ pressed }) => [
-        styles.item,
-        pressed && styles.itemPressed,
-        danger && styles.dangerItem,
-      ]}
+      onPress={() => route && router.push(route)}
+      style={({ pressed }) => [styles.menuLink, pressed && styles.pressed]}
     >
-      <View style={styles.itemLeft}>
-        <View style={[styles.iconChip, danger && styles.dangerIconChip]}>
-          <Ionicons
-            name={icon}
-            size={20}
-            color={danger ? '#fde2e2' : '#e0f2ff'}
-          />
+      <View style={styles.menuLeft}>
+        <View style={[styles.iconBox, { backgroundColor: `${color}15` }]}>
+          {isMCI ? (
+            <MaterialCommunityIcons name={icon} size={22} color={color} />
+          ) : (
+            <Ionicons name={icon} size={22} color={color} />
+          )}
         </View>
-        <Text style={[styles.itemText, danger && { color: '#fecaca' }]}>
-          {title}
-        </Text>
+        <View>
+          <Text style={styles.menuText}>{title}</Text>
+          {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+        </View>
       </View>
-
-      {value ? (
-        <Text style={styles.value}>{value}</Text>
-      ) : (
-        !danger && (
-          <Ionicons name="chevron-forward" size={18} color="#cbd5f5" />
-        )
-      )}
+      <Ionicons name="chevron-forward" size={18} color="#475569" />
     </Pressable>
   );
 
   const displayName = userProfile?.username || 'User';
-  const displayEmail = userProfile?.email || '';
+  const displayEmail = userProfile?.email || 'Premium Member';
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   return (
-    <LinearGradient
-      colors={isDark ? ['#020b26', '#04738b'] : ['#f8fafc', '#e2e8f0']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradient}
-    >
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* top bar with title + top‑right theme toggle */}
-        <View style={styles.topBar}>
-          <Text
-            style={[
-              styles.header,
-              !isDark && { color: '#020617' },
-            ]}
-          >
-            More
-          </Text>
+    <View style={styles.mainContainer}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        
+        {/* 1. PROFILE SECTION: Deep Emerald Gradient */}
+        <LinearGradient
+          colors={['#064e3b', '#020617']} 
+          style={styles.profileHeader}
+        >
+          <View style={styles.profileRow}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{avatarLetter}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.profileName}>{displayName}</Text>
+              <Text style={styles.profileEmail}>{displayEmail}</Text>
+            </View>
+            <Pressable onPress={() => router.push('/profile')} style={styles.editBtn}>
+              <Ionicons name="settings-outline" size={20} color="#10b981" />
+            </Pressable>
+          </View>
+        </LinearGradient>
 
-          <Pressable onPress={toggleTheme} style={styles.themeToggle}>
-            <Ionicons
-              name={isDark ? 'sunny' : 'moon'}
-              size={22}
-              color={isDark ? '#e5e7eb' : '#020617'}
+        <View style={styles.content}>
+          
+          {/* 2. ANALYTICS SECTION */}
+          <Text style={styles.sectionHeader}>Analytics & Insights</Text>
+          <View style={styles.sectionGroup}>
+            <MenuLink 
+              icon="fire" 
+              title="Expense Heat Map" 
+              subtitle="Visualize spending density"
+              route="/analytics/heatmap" 
+              color="#f59e0b" 
+              isMCI 
             />
+            <View style={styles.separator} />
+            <MenuLink 
+              icon="grid-outline" 
+              title="Category Manager" 
+              subtitle="Edit icons and spending limits"
+              route="/categories" 
+              color="#10b981" 
+            />
+          </View>
+
+          {/* 3. PLANNING SECTION */}
+          <Text style={styles.sectionHeader}>Financial Planning</Text>
+          <View style={styles.sectionGroup}>
+            <MenuLink 
+              icon="bullseye-arrow" 
+              title="Saving Goals" 
+              subtitle="Track targets like 'New Car' or 'Vacation'"
+              route="/goals" 
+              color="#f43f5e" 
+              isMCI 
+            />
+          </View>
+
+          {/* 4. DATA IMPORT SECTION */}
+          <Text style={styles.sectionHeader}>Data & Automation</Text>
+          <View style={styles.sectionGroup}>
+            <MenuLink 
+              icon="chatbubble-ellipses-outline" 
+              title="SMS Parsing" 
+              subtitle="Automatic expense logging from texts"
+              route="/settings/sms" 
+              color="#8b5cf6" 
+            />
+            <View style={styles.separator} />
+            <MenuLink 
+              icon="cloud-upload-outline" 
+              title="Bank Statements" 
+              subtitle="Import your monthly PDF history"
+              route="/wallets/bank" 
+              color="#3b82f6" 
+            />
+          </View>
+
+          {/* 5. PREFERENCES */}
+          <Text style={styles.sectionHeader}>App Preferences</Text>
+          <View style={styles.sectionGroup}>
+            <MenuLink 
+              icon="notifications-outline" 
+              title="Notifications" 
+              subtitle="Smart alerts and daily reminders"
+              route="/settings/notifications" 
+              color="#0ea5e9" 
+            />
+            <View style={styles.separator} />
+            <Pressable onPress={toggleTheme} style={styles.menuLink}>
+               <View style={styles.menuLeft}>
+                  <View style={[styles.iconBox, { backgroundColor: '#47556920' }]}>
+                    <Ionicons name={isDark ? 'sunny' : 'moon'} size={22} color="#94a3b8" />
+                  </View>
+                  <View>
+                    <Text style={styles.menuText}>Dark Appearance</Text>
+                    <Text style={styles.menuSubtitle}>Current: {theme.toUpperCase()}</Text>
+                  </View>
+               </View>
+               <View style={[styles.statusDot, { backgroundColor: isDark ? '#10b981' : '#334155' }]} />
+            </Pressable>
+          </View>
+
+          {/* LOGOUT BUTTON */}
+          <Pressable onPress={handleLogout} style={styles.logoutBtn}>
+             <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+             <Text style={styles.logoutText}>Sign Out of Finexa</Text>
           </Pressable>
+
+          <Text style={styles.footerText}>Finexa Premium v1.0.2</Text>
         </View>
-
-        {/* ACCOUNT */}
-        <Text style={styles.section}>Account</Text>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.profileCard,
-            pressed && styles.cardPressed,
-          ]}
-          onPress={() => router.push('/profile')}
-        >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{avatarLetter}</Text>
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{displayName}</Text>
-            <Text style={styles.email}>{displayEmail}</Text>
-          </View>
-
-          <Ionicons name="chevron-forward" size={18} color="#dbeafe" />
-        </Pressable>
-
-        {/* UPGRADE BANNER */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.upgradeWrapper,
-            pressed && styles.cardPressed,
-          ]}
-          onPress={() => {}}
-        >
-          <LinearGradient
-            colors={['#0284c7', '#22c1c3']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.upgrade}
-          >
-            <Ionicons name="rocket" size={20} color="#e0f2fe" />
-            <Text style={styles.upgradeText}>Upgrade Now</Text>
-          </LinearGradient>
-        </Pressable>
-
-        {/* FINANCE */}
-        <Text style={styles.section}>Finance</Text>
-        <Item icon="grid" title="Categories" route="/categories" />
-        <Item icon="pricetag" title="Labels" route="/labels" />
-        <Item
-          icon="time"
-          title="Scheduled Transactions"
-          route="/scheduled"
-        />
-        <Item icon="cash" title="Main Currency" value="INR" route="/currency" />
-
-        {/* ACCOUNTS & WALLETS */}
-        <Text style={styles.section}>Accounts & Wallets</Text>
-        <Item icon="wallet" title="Manual Wallets" route="/wallets/manual" />
-        <Item
-          icon="card"
-          title="Bank Accounts & E-Wallets"
-          route="/wallets/bank"
-        />
-        <Item
-          icon="logo-bitcoin"
-          title="Crypto Wallets"
-          route="/wallets/crypto"
-        />
-
-        {/* APP SETTINGS */}
-        <Text style={styles.section}>App Settings</Text>
-        <Item icon="notifications" title="Notifications" />
-        <Item icon="color-palette" title="Appearance" />
-        <Item icon="language" title="Language" />
-        <Item icon="settings" title="Advanced" route="/advanced" />
-
-        {/* SUPPORT */}
-        <Text style={styles.section}>Support</Text>
-        <Item icon="help-circle" title="Help Center" />
-        <Item icon="mail" title="Contact Support" />
-        <Item icon="document-text" title="Terms & Policies" />
-
-        {/* LOGOUT */}
-        <Item
-          icon="log-out"
-          title="Logout"
-          danger
-          onPress={handleLogout}
-        />
-
-        <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
+  mainContainer: { 
+    flex: 1, 
+    backgroundColor: '#020617' 
   },
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
+  profileHeader: {
+    paddingTop: 80,
+    paddingBottom: 40,
+    paddingHorizontal: 25,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
   },
-
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 16,   // distance from top
-    marginBottom: 12,
+  profileRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 18 
   },
-
-  themeToggle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  avatarCircle: {
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: '#10b981',
   },
-
-  header: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#f9fafb',
+  avatarText: { 
+    color: 'white', 
+    fontSize: 26, 
+    fontWeight: '800' 
   },
-
-  section: {
-    fontSize: 13,
-    color: '#cbd5f5',
-    marginTop: 24,
-    marginBottom: 8,
-    letterSpacing: 1,
+  profileName: { 
+    color: 'white', 
+    fontSize: 22, 
+    fontWeight: 'bold' 
+  },
+  profileEmail: { 
+    color: '#94a3b8', 
+    fontSize: 13, 
+    marginTop: 2 
+  },
+  editBtn: { 
+    padding: 12, 
+    backgroundColor: 'rgba(255,255,255,0.05)', 
+    borderRadius: 15 
+  },
+  content: { 
+    paddingHorizontal: 20 
+  },
+  sectionHeader: {
+    color: '#475569',
+    fontSize: 11,
     textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginTop: 35,
+    marginBottom: 12,
+    fontWeight: '800',
   },
-
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(9,16,40,0.92)',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(148,163,184,0.35)',
-  },
-
-  cardPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
-  },
-
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#0ea5e9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-
-  avatarText: {
-    color: '#e0f2fe',
-    fontWeight: '700',
-    fontSize: 18,
-  },
-
-  name: {
-    color: '#e5e7eb',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-
-  email: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginTop: 2,
-  },
-
-  upgradeWrapper: {
-    marginTop: 14,
-  },
-
-  upgrade: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  sectionGroup: {
+    backgroundColor: '#0f172a',
     borderRadius: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#22c1c3',
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    gap: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#1e293b',
   },
-
-  upgradeText: {
-    fontWeight: '700',
-    color: '#f9fafb',
-    fontSize: 15,
-  },
-
-  item: {
+  menuLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(9,16,40,0.9)',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(30,64,175,0.6)',
+    padding: 16,
   },
-
-  itemPressed: {
-    transform: [{ scale: 0.97 }],
-    opacity: 0.9,
+  menuLeft: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 14 
   },
-
-  itemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-
-  iconChip: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(15,118,178,0.35)',
+  iconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  dangerIconChip: {
-    backgroundColor: 'rgba(239,68,68,0.25)',
+  menuText: { 
+    color: '#f8fafc', 
+    fontSize: 16, 
+    fontWeight: '600' 
   },
-
-  itemText: {
-    color: '#e5e7eb',
-    fontSize: 15,
+  menuSubtitle: { 
+    color: '#64748b', 
+    fontSize: 12, 
+    marginTop: 2 
   },
-
-  value: {
-    color: '#dbeafe',
-    fontSize: 14,
+  separator: { 
+    height: 1, 
+    backgroundColor: '#1e293b', 
+    marginHorizontal: 16 
   },
-
-  dangerItem: {
-    borderColor: 'rgba(248,113,113,0.7)',
-    backgroundColor: 'rgba(127,29,29,0.35)',
+  statusDot: { 
+    width: 8, 
+    height: 8, 
+    borderRadius: 4 
   },
-
-  version: {
-    textAlign: 'center',
-    color: '#cbd5f5',
-    marginTop: 18,
-    fontSize: 12,
-    marginBottom: 8,
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 45,
+    padding: 18,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  logoutText: { 
+    color: '#ef4444', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
+  footerText: { 
+    textAlign: 'center', 
+    color: '#334155', 
+    fontSize: 12, 
+    marginTop: 30 
+  },
+  pressed: { 
+    opacity: 0.7 
   },
 });

@@ -7,12 +7,26 @@ import {
   Modal,
   Alert,
   Image,
+  ScrollView,
+  Pressable,
+  Dimensions,
+  Platform,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-
 import { useAuth } from "../../services/AuthContext";
+
+const { width, height } = Dimensions.get("window");
+
+interface DrawerItemProps {
+  icon: any;
+  title: string;
+  subtitle: string;
+  route?: string;
+  color: string;
+  isMCI?: boolean;
+}
 
 export function TopNavbar() {
   const [menuVisible, setMenuVisible] = useState(false);
@@ -20,11 +34,11 @@ export function TopNavbar() {
   const { userProfile, signOut } = useAuth();
 
   const displayName = userProfile?.username || "User";
-  const displayEmail = userProfile?.email || "";
+  const displayEmail = userProfile?.email || "Premium Member";
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
+    Alert.alert("Logout", "Sign out of Finexa?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Logout",
@@ -32,31 +46,52 @@ export function TopNavbar() {
         onPress: async () => {
           try {
             await signOut();
+            setMenuVisible(false);
           } catch {
-            Alert.alert("Error", "Failed to logout. Please try again.");
+            Alert.alert("Error", "Failed to logout.");
           }
         },
       },
     ]);
   };
 
+  const DrawerItem = ({ icon, title, subtitle, route, color, isMCI = false }: DrawerItemProps) => (
+    <Pressable
+      onPress={() => {
+        setMenuVisible(false);
+        if (route) router.push(route as any);
+      }}
+      style={({ pressed }) => [styles.drawerItem, pressed && styles.pressed]}
+    >
+      <View style={styles.itemLeft}>
+        <View style={[styles.iconBox, { backgroundColor: `${color}12` }]}>
+          {isMCI ? (
+            <MaterialCommunityIcons name={icon} size={18} color={color} />
+          ) : (
+            <Ionicons name={icon} size={18} color={color} />
+          )}
+        </View>
+        <View>
+          <Text style={styles.itemTitle}>{title}</Text>
+          <Text style={styles.itemSubtitle}>{subtitle}</Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={14} color="#475569" />
+    </Pressable>
+  );
+
   return (
     <>
-      {/* ================= TOP BAR ================= */}
+      {/* 1. SLIM TOP NAVIGATION BAR */}
       <View style={styles.topBar}>
-        {/* LEFT: HAMBURGER */}
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => setMenuVisible(true)}
-        >
-          <Ionicons name="menu" size={24} color="#111827" />
+        <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
+          <Ionicons name="menu" size={26} color="#111827" />
         </TouchableOpacity>
 
-        {/* LEFT-CENTER: LOGO + NAME (same row, like screenshot) */}
         <View style={styles.logoRow}>
           <View style={styles.logoCircle}>
             <Image
-              source={require("../../assets/images/logo.png")}
+              source={require("../../assets/images/logo.png")} 
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -64,247 +99,155 @@ export function TopNavbar() {
           <Text style={styles.appName}>Finexa</Text>
         </View>
 
-        {/* RIGHT: BELL */}
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => router.push("/")}
-        >
-          <Ionicons
-            name="notifications-outline"
-            size={22}
-            color="#111827"
-          />
+        <TouchableOpacity style={styles.iconButton} onPress={() => router.push("/")}>
+          <Ionicons name="notifications-outline" size={24} color="#111827" />
         </TouchableOpacity>
       </View>
 
-      {/* ================= SIDE MENU ================= */}
-      <Modal visible={menuVisible} animationType="slide" transparent>
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={() => setMenuVisible(false)}
-        >
-          <View style={styles.menu}>
-            {/* USER HEADER */}
-            <LinearGradient
-              colors={["#0284c7", "#22c1c3"]}
-              style={styles.userHeader}
-            >
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{avatarLetter}</Text>
+      {/* 2. FULL-BLEED LEFT DRAWER */}
+      <Modal
+        visible={menuVisible}
+        animationType="fade"
+        transparent={true}
+        statusBarTranslucent={true}
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.drawerContainer}>
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              <LinearGradient colors={["#064e3b", "#020617"]} style={styles.drawerHeader}>
+                <View style={styles.profileInfo}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{avatarLetter}</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.uName}>{displayName}</Text>
+                    <Text style={styles.uEmail}>{displayEmail}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity 
+                  style={styles.viewProfile}
+                  onPress={() => { setMenuVisible(false); router.push("/profile"); }}
+                >
+                  <Text style={styles.viewProfileText}>Manage Account</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+
+              <View style={styles.drawerBody}>
+                <Text style={styles.groupLabel}>Insights</Text>
+                <View style={styles.groupCard}>
+                  <DrawerItem 
+                    icon="fire" 
+                    title="Heat Map" 
+                    subtitle="Spending hotspots" 
+                    route="/profile/heatmap" 
+                    color="#f59e0b" 
+                    isMCI 
+                  />
+                  <View style={styles.divider} />
+                  <DrawerItem 
+                    icon="grid-outline" 
+                    title="Categories" 
+                    subtitle="Manage icons" 
+                    route="/profile/categories" 
+                    color="#10b981" 
+                  />
+                </View>
+
+                <Text style={styles.groupLabel}>Automation</Text>
+                <View style={styles.groupCard}>
+                  <DrawerItem 
+                    icon="bullseye-arrow" 
+                    title="Saving Goals" 
+                    subtitle="Reach targets" 
+                    route="/profile/goals" 
+                    color="#f43f5e" 
+                    isMCI 
+                  />
+                  <View style={styles.divider} />
+                  <DrawerItem 
+                    icon="chatbubble-ellipses-outline" 
+                    title="SMS Parsing" 
+                    subtitle="Auto-logging" 
+                    route="/profile/sms" 
+                    color="#8b5cf6" 
+                  />
+                </View>
+
+                <TouchableOpacity style={styles.logoutRow} onPress={handleLogout}>
+                  <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+                  <Text style={styles.logoutLabel}>Logout</Text>
+                </TouchableOpacity>
               </View>
-
-              <Text style={styles.userName}>{displayName}</Text>
-              <Text style={styles.userEmail}>{displayEmail}</Text>
-
-              <TouchableOpacity
-                style={styles.profileBtn}
-                onPress={() => {
-                  setMenuVisible(false);
-                  router.push("/profile");
-                }}
-              >
-                <Text style={styles.profileBtnText}>View Profile</Text>
-              </TouchableOpacity>
-            </LinearGradient>
-
-            {/* MENU ITEMS */}
-            <MenuItem
-              icon="grid-outline"
-              label="Categories"
-              onPress={() => {
-                setMenuVisible(false);
-                router.push("/add");
-              }}
-            />
-            <MenuItem
-              icon="wallet-outline"
-              label="Wallets"
-              onPress={() => {
-                setMenuVisible(false);
-                router.push("/add");
-              }}
-            />
-            <MenuItem
-              icon="settings-outline"
-              label="Settings"
-              onPress={() => {
-                setMenuVisible(false);
-                router.push("/add");
-              }}
-            />
-            <MenuItem
-              icon="help-circle-outline"
-              label="Help & Support"
-              onPress={() => {
-                setMenuVisible(false);
-                router.push("/add");
-              }}
-            />
-
-            <View style={styles.divider} />
-
-            <MenuItem
-              icon="log-out-outline"
-              label="Logout"
-              danger
-              onPress={handleLogout}
-            />
+            </ScrollView>
           </View>
-        </TouchableOpacity>
+
+          <Pressable style={styles.closeArea} onPress={() => setMenuVisible(false)} />
+        </View>
       </Modal>
     </>
   );
 }
 
-/* ================= MENU ITEM ================= */
-function MenuItem({
-  icon,
-  label,
-  onPress,
-  danger,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress?: () => void;
-  danger?: boolean;
-}) {
-  return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-      <Ionicons
-        name={icon}
-        size={20}
-        color={danger ? "#DC2626" : "#111827"}
-      />
-      <Text
-        style={[
-          styles.menuText,
-          danger && { color: "#DC2626", fontWeight: "600" },
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-/* ================= STYLES ================= */
 const styles = StyleSheet.create({
-  /* TOP BAR */
   topBar: {
-    paddingTop: 28,
-    paddingBottom: 14,
+    height: Platform.OS === 'ios' ? 100 : 70, 
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingHorizontal: 16,
     backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between", 
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    borderBottomColor: "#F3F4F6",
+    zIndex: 10,
   },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
+  logoRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "flex-start", 
+    flex: 1,                      
+    marginLeft: 8,                
   },
+  logoCircle: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
+    backgroundColor: "#000000", 
+    alignItems: "center", 
+    justifyContent: "center" 
+  },
+  logoImage: { width: 22, height: 22 },
+  appName: { fontSize: 22, fontWeight: "800", color: "#111827", marginLeft: 10 },
+  iconButton: { padding: 4, width: 40, alignItems: 'center' },
 
-  // logo + Finexa text, left side (not centered)
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginLeft: 8,
-  },
-  logoCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#020617",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoImage: {
-    width: 26,
-    height: 26,
-  },
-  appName: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#111827",
-    marginLeft: 10,
-  },
+  modalOverlay: { flex: 1, flexDirection: "row", backgroundColor: "rgba(0,0,0,0.6)" },
+  drawerContainer: { width: width * 0.76, height: '100%', backgroundColor: "#020617" },
+  closeArea: { flex: 1, height: "100%" },
 
-  /* MENU OVERLAY */
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
+  drawerHeader: { 
+    paddingTop: Platform.OS === 'ios' ? 65 : 55, 
+    paddingBottom: 25, 
+    paddingHorizontal: 20 
   },
-  menu: {
-    width: "78%",
-    height: "100%",
-    backgroundColor: "#FFFFFF",
-  },
-
-  /* USER HEADER */
-  userHeader: {
-    paddingTop: 56,
-    paddingBottom: 24,
-    alignItems: "center",
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#0ea5e9",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  avatarText: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#e0f2fe",
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#f9fafb",
-  },
-  userEmail: {
-    fontSize: 13,
-    color: "#e0f2fe",
-    marginTop: 2,
-  },
-  profileBtn: {
-    marginTop: 10,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    paddingHorizontal: 18,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  profileBtnText: {
-    color: "#f9fafb",
-    fontWeight: "600",
-    fontSize: 13,
-  },
-
-  /* MENU ITEMS */
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-  },
-  menuText: {
-    marginLeft: 14,
-    fontSize: 16,
-    color: "#111827",
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginVertical: 12,
-  },
+  profileInfo: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: "rgba(16,185,129,0.15)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#10b981" },
+  avatarText: { color: "#fff", fontSize: 20, fontWeight: "bold" },
+  uName: { color: "#fff", fontSize: 17, fontWeight: "bold" },
+  uEmail: { color: "#94a3b8", fontSize: 12 },
+  viewProfile: { marginTop: 15, backgroundColor: "rgba(255,255,255,0.08)", paddingVertical: 8, borderRadius: 12, alignItems: "center" },
+  viewProfileText: { color: "#10b981", fontWeight: "700", fontSize: 12 },
+  
+  drawerBody: { padding: 15 },
+  groupLabel: { color: "#475569", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8, marginTop: 15, fontWeight: "800", paddingLeft: 5 },
+  groupCard: { backgroundColor: "#0f172a", borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: "#1e293b" },
+  drawerItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14 },
+  itemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  iconBox: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  itemTitle: { color: "#f8fafc", fontSize: 14, fontWeight: "600" },
+  itemSubtitle: { color: "#64748b", fontSize: 10 },
+  divider: { height: 1, backgroundColor: "#1e293b", marginHorizontal: 12 },
+  pressed: { opacity: 0.7 },
+  logoutRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 30, padding: 14, backgroundColor: "rgba(239,68,68,0.08)", borderRadius: 15 },
+  logoutLabel: { color: "#ef4444", fontWeight: "bold", fontSize: 14 },
 });
