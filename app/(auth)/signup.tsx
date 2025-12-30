@@ -156,21 +156,36 @@ export default function Signup() {
       const user = userCredential.user;
       const defaultPhotoURL = 'https://i.pravatar.cc/150?img=12';
       await setDoc(doc(db, 'users', user.uid), {
+      // 🔑 Identity
       uid: user.uid,
       email: user.email,
       username: username,
-      name: '',
-      occupation: '',
-      phone: '',
+
+      // 👤 Profile (initially empty)
+      name: null,
+      occupation: null,
+      phone: null,
       dob: null,
-      gender: '',
-      photoURL: defaultPhotoURL,   // <-- Default profile photo
+      gender: null,
+      photoURL: defaultPhotoURL,
+
+      // 💰 Finance (initial defaults)
+      monthlyIncome: null,
+      monthlySpendingLimit: null,
+      preferredCategories: [],
+      preferredCategoryNames: [],
+
+      // 🧠 App state
       isProfileComplete: false,
       role: 'user',
       status: 'active',
+      setupVersion: '1.0.0',
+
+      // ⏱ Metadata
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
 
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
