@@ -22,6 +22,7 @@ import { AnimationConfig } from '../constants/theme';
 import { auth, db, storage } from '../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 export default function CompleteProfile() {
   const router = useRouter();
 
@@ -29,12 +30,11 @@ export default function CompleteProfile() {
   const [occupation, setOccupation] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
+  const [dobDate, setDobDate] = useState<Date | null>(null);
   const [gender, setGender] = useState('');
   const [photoURI, setPhotoURI] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dobDate, setDobDate] = useState<Date | null>(null);
-
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
@@ -61,8 +61,13 @@ export default function CompleteProfile() {
     setOccupation(d.occupation || '');
     setPhone(d.phone || '');
     setGender(d.gender || '');
-    setDob(d.dob ? d.dob.toDate().toISOString().split('T')[0] : '');
     setPhotoURI(d.photoURL || null);
+
+    if (d.dob) {
+      const date = d.dob.toDate();
+      setDobDate(date);
+      setDob(date.toISOString().split('T')[0]);
+    }
   };
 
   const validate = () => {
@@ -90,17 +95,17 @@ export default function CompleteProfile() {
   };
 
   const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert('Permission required', 'Please allow access to photos.');
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Please allow photo access');
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
       allowsEditing: true,
       aspect: [1, 1],
+      quality: 0.7,
     });
 
     if (!result.canceled) {
@@ -108,30 +113,23 @@ export default function CompleteProfile() {
     }
   };
 
-  const uploadPhoto = async (uri: string, userId: string) => {
+  const uploadPhoto = async (uri: string, uid: string) => {
     const response = await fetch(uri);
     const blob = await response.blob();
-    const storageRef = ref(storage, `users/${userId}/profile.jpg`);
+    const storageRef = ref(storage, `users/${uid}/profile.jpg`);
     await uploadBytes(storageRef, blob);
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
+    return await getDownloadURL(storageRef);
   };
 
   const onDateChange = (_: any, selectedDate?: Date) => {
-  setShowDatePicker(false);
+    setShowDatePicker(false);
+    if (!selectedDate) return;
 
-  if (selectedDate) {
     setDobDate(selectedDate);
-
-    // Format as YYYY-MM-DD
-    const formatted = selectedDate.toISOString().split('T')[0];
-    setDob(formatted);
-  }
-};
+    setDob(selectedDate.toISOString().split('T')[0]);
+  };
 
   const submit = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
     const error = validate();
     if (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -144,9 +142,8 @@ export default function CompleteProfile() {
       const user = auth.currentUser;
       if (!user) throw new Error('Not authenticated');
 
-      // Upload photo only if user selected one
       let uploadedPhotoURL = photoURI;
-      if (photoURI && !photoURI.startsWith('https://')) {
+      if (photoURI && !photoURI.startsWith('https')) {
         uploadedPhotoURL = await uploadPhoto(photoURI, user.uid);
       }
 
@@ -183,17 +180,14 @@ export default function CompleteProfile() {
         >
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-              {/* Header */}
               <View style={styles.header}>
                 <Text style={styles.title}>Complete Profile</Text>
                 <Text style={styles.subtitle}>Tell us a bit more about you</Text>
               </View>
 
-              {/* Card */}
               <View style={styles.formCard}>
                 <Text style={styles.formTitle}>Your Details</Text>
 
-                {/* Optional Photo */}
                 <TouchableOpacity style={styles.photoWrapper} onPress={pickImage}>
                   {photoURI ? (
                     <Image source={{ uri: photoURI }} style={styles.photo} />
@@ -233,49 +227,29 @@ export default function CompleteProfile() {
                   />
                 </View>
 
-                {/* <View style={styles.inputWrapper}>
-                  <TextInput
-                    placeholder="DOB (YYYY-MM-DD)"
-                    placeholderTextColor="#9CA3AF"
-                    style={styles.input}
-                    value={dob}
-                    onChangeText={setDob}
-                  />
-                </View> */}
+                {/* DOB FIELD */}
                 <TouchableOpacity
                   style={styles.inputWrapper}
-                  activeOpacity={0.8}
                   onPress={() => setShowDatePicker(true)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.input, !dob && { color: '#9CA3AF' }]}>
-                    {dob || 'Date of Birth'}
-                  </Text>
+                  <View style={styles.dobRow}>
+                    <Text style={[styles.input, !dob && { color: '#9CA3AF' }]}>
+                      {dob || 'Date of Birth'}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={18} color="#0EA5E9" />
+                  </View>
                 </TouchableOpacity>
 
-
-                {/* <View style={styles.inputWrapper}>
-                  <TextInput
-                    placeholder="Gender (Optional)"
-                    placeholderTextColor="#9CA3AF"
-                    style={styles.input}
-                    value={gender}
-                    onChangeText={setGender}
-                  />
-                </View> */}
                 <Text style={styles.genderLabel}>Gender (Optional)</Text>
 
                 <View style={styles.genderRow}>
                   {['Male', 'Female', 'Other'].map((item) => {
                     const selected = gender === item;
-
                     return (
                       <TouchableOpacity
                         key={item}
-                        activeOpacity={0.85}
-                        onPress={() => {
-                          Haptics.selectionAsync();
-                          setGender(gender === item ? '' : item);
-                        }}
+                        onPress={() => setGender(selected ? '' : item)}
                         style={[
                           styles.genderChip,
                           selected && styles.genderChipActive,
@@ -291,48 +265,47 @@ export default function CompleteProfile() {
                                 : 'transgender'
                             }
                             size={16}
-                            color={gender === item ? '#000' : '#6EE7B7'}
+                            color={selected ? '#000' : '#6EE7B7'}
                           />
-
                           <Text
                             style={[
                               styles.genderText,
-                              gender === item && styles.genderTextActive,
+                              selected && styles.genderTextActive,
                             ]}
                           >
                             {item}
                           </Text>
                         </View>
-
-                          {item}
-                        
                       </TouchableOpacity>
                     );
                   })}
                 </View>
 
-                
                 {showDatePicker && (
                   <DateTimePicker
                     value={dobDate || new Date(2000, 0, 1)}
                     mode="date"
                     display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                    maximumDate={new Date()} // cannot select future DOB
+                    maximumDate={new Date()}
                     onChange={onDateChange}
                   />
                 )}
 
-
-
                 <TouchableOpacity
-                  activeOpacity={0.8}
                   onPressIn={handlePressIn}
                   onPressOut={handlePressOut}
                   onPress={submit}
                   disabled={isLoading}
                 >
-                  <Animated.View style={[styles.button, { transform: [{ scale: buttonScale }] }]}>
-                    <Text style={styles.buttonText}>{isLoading ? 'Saving...' : 'Continue'}</Text>
+                  <Animated.View
+                    style={[
+                      styles.button,
+                      { transform: [{ scale: buttonScale }] },
+                    ]}
+                  >
+                    <Text style={styles.buttonText}>
+                      {isLoading ? 'Saving...' : 'Continue'}
+                    </Text>
                   </Animated.View>
                 </TouchableOpacity>
               </View>
@@ -354,13 +327,17 @@ const styles = StyleSheet.create({
   title: { fontSize: 32, fontWeight: '700', color: '#6EE7B7', marginBottom: 8 },
   subtitle: { fontSize: 14, color: '#0EA5E9' },
   formCard: {
-    flex: 1,
     backgroundColor: '#111',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
   },
-  formTitle: { fontSize: 22, fontWeight: '600', color: '#6EE7B7', marginBottom: 20 },
+  formTitle: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#6EE7B7',
+    marginBottom: 20,
+  },
   inputWrapper: {
     borderWidth: 1,
     borderColor: '#0EA5E9',
@@ -371,6 +348,11 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   input: { color: '#6EE7B7', fontSize: 15 },
+  dobRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   button: {
     backgroundColor: '#0EA5E9',
     borderRadius: 16,
@@ -378,10 +360,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
-    shadowColor: '#6EE7B7',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
   },
   buttonText: { fontSize: 16, fontWeight: '600', color: '#000' },
   photoWrapper: {
@@ -398,50 +376,23 @@ const styles = StyleSheet.create({
   },
   photo: { width: 100, height: 100, borderRadius: 50 },
   photoText: { color: '#6EE7B7', fontSize: 14 },
-  genderLabel: {
-  color: '#9CA3AF',
-  fontSize: 13,
-  marginBottom: 8,
-  marginTop: 4,
-},
-
-genderRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  marginBottom: 18,
-},
-
-genderChip: {
-  flex: 1,
-  borderWidth: 1,
-  borderColor: '#0EA5E9',
-  borderRadius: 14,
-  paddingVertical: 12,
-  alignItems: 'center',
-  marginHorizontal: 4,
-  backgroundColor: 'transparent',
-},
-
-genderChipActive: {
-  backgroundColor: '#0EA5E9',
-},
-
-genderText: {
-  color: '#6EE7B7',
-  fontSize: 14,
-  fontWeight: '500',
-},
-
-genderTextActive: {
-  color: '#000',
-  fontWeight: '600',
-},
-genderChipContent: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 6,
-},
-
-
-
+  genderLabel: { color: '#9CA3AF', fontSize: 13, marginBottom: 8 },
+  genderRow: { flexDirection: 'row', marginBottom: 18 },
+  genderChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#0EA5E9',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  genderChipActive: { backgroundColor: '#0EA5E9' },
+  genderText: { color: '#6EE7B7', fontSize: 14 },
+  genderTextActive: { color: '#000', fontWeight: '600' },
+  genderChipContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
 });

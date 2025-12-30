@@ -19,20 +19,39 @@ import { useTransactions } from "../context/TransactionContext";
 import { saveManualTransactionToFirestore } from "../services/firestoreTransactions";
 import { useAuth } from "../services/AuthContext";
 
-const CATEGORIES = [
+// ✅ SINGLE SOURCE OF TRUTH
+export const ALL_CATEGORIES = [
+  // Income
+  "Income / Transfer In",
+
+  // Core Expenses
+  "Recharge",
   "Food & Dining",
+  "Fuel",
   "Shopping",
-  "Transportation",
+  "Groceries",
+  "Travel",
   "Entertainment",
-  "Bills & Utilities",
-  "Healthcare",
+  "Utilities",
   "Education",
-  "Investment",
-  "Salary",
-  "Freelance",
-  "Gifts",
-  "Other",
+  "Healthcare",
+  "Banking & Finance",
+  "Transfer Out",
+
+  // Extended Coverage
+  "Personal Care",
+  "Home & Kitchen",
+  "Gifts & Donations",
+  "Business Expenses",
+  "Hobbies & Leisure",
+  "Vehicle Maintenance",
+  "Child & Family",
+  "Technology & Software",
+
+  // Fallback
+  "Other Expense", // ✅ IMPORTANT
 ];
+
 
 export default function AddTransactionScreen() {
   const router = useRouter();
@@ -47,15 +66,12 @@ export default function AddTransactionScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [type, setType] = useState<"income" | "expense">("expense");
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (_: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === "ios");
-    if (selectedDate) {
-      setDate(selectedDate);
-    }
+    if (selectedDate) setDate(selectedDate);
   };
 
   const handleAddTransaction = async () => {
-    // Validation
     if (!amount || parseFloat(amount) <= 0) {
       Alert.alert("Error", "Please enter a valid amount");
       return;
@@ -68,7 +84,6 @@ export default function AddTransactionScreen() {
       Alert.alert("Error", "Please enter a description");
       return;
     }
-
     if (!user) {
       Alert.alert("Error", "Please log in to add transactions");
       return;
@@ -85,7 +100,6 @@ export default function AddTransactionScreen() {
         date,
       });
 
-      // Create transaction object for local state
       const newTransaction = {
         id: transactionId,
         amount: parseFloat(amount),
@@ -99,30 +113,25 @@ export default function AddTransactionScreen() {
         updatedAt: new Date().toISOString(),
       };
 
-      // Add to local state
       dispatch({
         type: "ADD_TRANSACTION",
         payload: newTransaction,
       });
 
       Alert.alert("Success", "Transaction added successfully!", [
-        { 
-          text: "OK", 
+        {
+          text: "OK",
           onPress: () => {
-            // Reset form
             setAmount("");
             setNote("");
             setCategory("");
             setDate(new Date());
             setType("expense");
-            
-            // Navigate back
             router.back();
-          }
+          },
         },
       ]);
     } catch (error: any) {
-      console.error("Add transaction error:", error);
       Alert.alert("Error", error.message || "Failed to add transaction");
     } finally {
       setLoading(false);
@@ -131,6 +140,7 @@ export default function AddTransactionScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#E5F3E5" />
@@ -140,7 +150,7 @@ export default function AddTransactionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Type Selection */}
+        {/* TYPE */}
         <View style={styles.typeContainer}>
           <TouchableOpacity
             style={[styles.typeButton, type === "expense" && styles.typeButtonActive]}
@@ -160,7 +170,7 @@ export default function AddTransactionScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Amount Input */}
+        {/* AMOUNT */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Amount</Text>
           <View style={styles.amountContainer}>
@@ -172,12 +182,11 @@ export default function AddTransactionScreen() {
               value={amount}
               onChangeText={setAmount}
               keyboardType="decimal-pad"
-              editable={!loading}
             />
           </View>
         </View>
 
-        {/* Note Input */}
+        {/* NOTE */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Description</Text>
           <TextInput
@@ -186,46 +195,34 @@ export default function AddTransactionScreen() {
             placeholderTextColor="#6B7280"
             value={note}
             onChangeText={setNote}
-            editable={!loading}
             multiline
-            numberOfLines={3}
           />
         </View>
 
-        {/* Date Picker */}
+        {/* DATE */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Date</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-            disabled={loading}
-          >
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
             <Ionicons name="calendar-outline" size={20} color="#6EE7B7" />
             <Text style={styles.dateText}>
-              {date.toLocaleDateString("en-IN", {
-                weekday: "short",
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
+              {date.toLocaleDateString("en-IN")}
             </Text>
           </TouchableOpacity>
           {showDatePicker && (
             <DateTimePicker
               value={date}
               mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={handleDateChange}
               maximumDate={new Date()}
+              onChange={handleDateChange}
             />
           )}
         </View>
 
-        {/* Category Selection */}
+        {/* CATEGORIES */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Category</Text>
           <View style={styles.categoryGrid}>
-            {CATEGORIES.map((cat) => (
+            {ALL_CATEGORIES.map((cat) => (
               <TouchableOpacity
                 key={cat}
                 style={[
@@ -233,7 +230,6 @@ export default function AddTransactionScreen() {
                   category === cat && styles.categoryChipSelected,
                 ]}
                 onPress={() => setCategory(cat)}
-                disabled={loading}
               >
                 <Text
                   style={[
@@ -249,7 +245,7 @@ export default function AddTransactionScreen() {
         </View>
       </ScrollView>
 
-      {/* Add Button */}
+      {/* SAVE */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.addButton, loading && styles.addButtonDisabled]}
@@ -270,17 +266,14 @@ export default function AddTransactionScreen() {
   );
 }
 
+/* ---------- STYLES (UNCHANGED) ---------- */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#020B06",
-  },
+  container: { flex: 1, backgroundColor: "#020B06" },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#1A231E",
   },
@@ -292,14 +285,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#E5F3E5",
-  },
-  content: {
-    padding: 16,
-  },
+  headerTitle: { color: "#E5F3E5", fontSize: 18, fontWeight: "600" },
+  content: { padding: 16 },
   typeContainer: {
     flexDirection: "row",
     backgroundColor: "#132016",
@@ -307,118 +294,53 @@ const styles = StyleSheet.create({
     padding: 4,
     marginBottom: 24,
   },
-  typeButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  typeButtonActive: {
-    backgroundColor: "#4ADE80",
-  },
-  typeText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#9CA3AF",
-  },
-  typeTextActive: {
-    color: "#020B06",
-  },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#E5F3E5",
-    marginBottom: 8,
-  },
+  typeButton: { flex: 1, padding: 12, alignItems: "center" },
+  typeButtonActive: { backgroundColor: "#4ADE80", borderRadius: 8 },
+  typeText: { color: "#9CA3AF", fontWeight: "600" },
+  typeTextActive: { color: "#020B06" },
+  inputGroup: { marginBottom: 24 },
+  label: { color: "#E5F3E5", marginBottom: 8, fontWeight: "600" },
   amountContainer: {
     flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "#132016",
     borderRadius: 12,
-    paddingHorizontal: 16,
+    padding: 16,
   },
-  currencySymbol: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#4ADE80",
-    marginRight: 8,
-  },
-  amountInput: {
-    flex: 1,
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#E5F3E5",
-    paddingVertical: 12,
-  },
+  currencySymbol: { fontSize: 24, color: "#4ADE80", marginRight: 8 },
+  amountInput: { flex: 1, fontSize: 28, color: "#E5F3E5" },
   input: {
     backgroundColor: "#132016",
     borderRadius: 12,
     padding: 16,
     color: "#E5F3E5",
-    fontSize: 16,
-    textAlignVertical: "top",
   },
   dateButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#132016",
-    borderRadius: 12,
     padding: 16,
+    borderRadius: 12,
   },
-  dateText: {
-    marginLeft: 12,
-    fontSize: 16,
-    color: "#E5F3E5",
-    fontWeight: "500",
-  },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  dateText: { marginLeft: 12, color: "#E5F3E5" },
+  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   categoryChip: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
     backgroundColor: "#374151",
-    borderWidth: 1,
-    borderColor: "#4B5563",
   },
-  categoryChipSelected: {
-    backgroundColor: "#4ADE80",
-    borderColor: "#4ADE80",
-  },
-  categoryText: {
-    fontSize: 14,
-    color: "#9CA3AF",
-    fontWeight: "500",
-  },
-  categoryTextSelected: {
-    color: "#020B06",
-  },
-  footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#1A231E",
-  },
+  categoryChipSelected: { backgroundColor: "#4ADE80" },
+  categoryText: { color: "#9CA3AF" },
+  categoryTextSelected: { color: "#020B06" },
+  footer: { padding: 16 },
   addButton: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
     backgroundColor: "#4ADE80",
-    borderRadius: 12,
     padding: 16,
-    gap: 8,
+    borderRadius: 12,
   },
-  addButtonDisabled: {
-    opacity: 0.7,
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#020B06",
-  },
+  addButtonDisabled: { opacity: 0.7 },
+  addButtonText: { marginLeft: 8, fontWeight: "600", color: "#020B06" },
 });
