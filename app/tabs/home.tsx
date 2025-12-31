@@ -375,9 +375,6 @@ const budgetUtilization = monthlyBudget > 0
   const navigateToGoals = () => {
     router.push("/goals");
   };
-   const navigateToreminders= () =>{
-    router.push("/reminders/add")
-   }
 
   if (loading) {
     return (
@@ -395,7 +392,7 @@ const budgetUtilization = monthlyBudget > 0
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      <TopNavbar onMenuPress={openMenu} onNotificationsPress={navigateToreminders} />
+      <TopNavbar onMenuPress={openMenu} onNotificationsPress={() => {}} />
 
       {/* Greeting */}
       <View style={styles.header}>
