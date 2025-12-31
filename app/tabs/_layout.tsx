@@ -1,5 +1,5 @@
 import { Tabs, Redirect } from "expo-router";
-import { Ionicons,Octicons,MaterialIcons} from "@expo/vector-icons";
+import { Ionicons, Octicons, MaterialIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View, Image, StyleSheet } from "react-native";
 import { useAuth } from "../../services/AuthContext";
@@ -16,7 +16,7 @@ function RotatingBrandIcon() {
   useEffect(() => {
     const id = setInterval(() => {
       setIndex((prev) => (prev + 1) % brandLogos.length);
-    }, 1000); // faster: change brand every 0.8s
+    }, 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -53,10 +53,7 @@ export default function TabsLayout() {
         },
         tabBarActiveTintColor: "#16A34A",
         tabBarInactiveTintColor: "#9CA3AF",
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
       }}
     >
       <Tabs.Screen
@@ -79,7 +76,6 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* BIG CENTER CIRCLE WITH ROTATING BRAND ICONS */}
       <Tabs.Screen
         name="banks"
         options={{
@@ -88,6 +84,9 @@ export default function TabsLayout() {
           tabBarLabel: "",
         }}
       />
+
+      {/* HIDDEN REMINDERS */}
+      
 
       <Tabs.Screen
         name="budgets"
@@ -102,7 +101,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="analytics"
         options={{
-          title: "analytics",
+          title: "Analytics",
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="analytics" size={size} color={color} />
           ),
@@ -113,12 +112,7 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  loadingScreen: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-  },
+  loadingScreen: { flex: 1, justifyContent: "center", alignItems: "center" },
   bigCircle: {
     width: 70,
     height: 70,
@@ -133,10 +127,5 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
   },
-  brandImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    resizeMode: "contain",
-  },
+  brandImage: { width: 40, height: 40, borderRadius: 20, resizeMode: "contain" },
 });

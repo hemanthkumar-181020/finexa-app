@@ -149,8 +149,16 @@ export function TopNavbar() {
                     icon="grid-outline" 
                     title="Categories" 
                     subtitle="Manage icons" 
-                    route="/profile/categories" 
+                    route="/categories" 
                     color="#10b981" 
+                  />
+                  <View style={styles.divider} />
+                    <DrawerItem 
+                    icon="notifications-outline"       // notification/bell icon
+                    title="Reminders"           // drawer title
+                    subtitle="Manage reminders" // optional subtitle
+                    route="/reminders"    // must match hidden screen path
+                    color="#f59e0b"             // any color you like (amber)
                   />
                 </View>
 

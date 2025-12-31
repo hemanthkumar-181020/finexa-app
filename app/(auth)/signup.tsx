@@ -180,8 +180,6 @@ export default function Signup() {
       role: 'user',
       status: 'active',
       setupVersion: '1.0.0',
-
-      // ⏱ Metadata
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
