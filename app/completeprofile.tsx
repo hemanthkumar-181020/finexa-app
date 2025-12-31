@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Slider from '@react-native-community/slider';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Zap } from 'lucide-react-native';
-
-// 🔔 PUSH NOTIFICATIONS
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 
 // Firebase
 import { auth, db } from '../services/firebase';
@@ -48,6 +43,7 @@ const categories = [
   { id: 'tech', name: 'Technology & Software', icon: '💻' },
 ];
 
+
 export default function CompleteProfile() {
   const router = useRouter();
 
@@ -60,55 +56,14 @@ export default function CompleteProfile() {
   const [spendingLimit, setSpendingLimit] = useState('');
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
-  const [pushToken, setPushToken] = useState<string | null>(null);
-
-  // =======================
-  // PUSH TOKEN (ON START)
-  // =======================
-  useEffect(() => {
-    const registerForPush = async () => {
-      if (!Device.isDevice) return;
-
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-
-      let finalStatus = existingStatus;
-      if (existingStatus !== 'granted') {
-        const { status } =
-          await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== 'granted') return;
-
-      const token = await Notifications.getExpoPushTokenAsync();
-      setPushToken(token.data);
-
-      const user = auth.currentUser;
-      if (user) {
-        await setDoc(
-          doc(db, 'users', user.uid),
-          {
-            expoPushToken: token.data,
-            pushEnabled: true,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
-    };
-
-    registerForPush();
-  }, []);
 
   // =======================
   // HELPERS
   // =======================
   const toggleCategory = (id: string) => {
     Haptics.selectionAsync();
-    setSelectedCats(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    setSelectedCats((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 
@@ -130,8 +85,8 @@ export default function CompleteProfile() {
       if (!user) return;
 
       const categoryNames = categories
-        .filter(c => selectedCats.includes(c.id))
-        .map(c => c.name);
+        .filter((c) => selectedCats.includes(c.id))
+        .map((c) => c.name);
 
       await setDoc(
         doc(db, 'users', user.uid),
@@ -142,8 +97,6 @@ export default function CompleteProfile() {
             parseFloat(spendingLimit) || income * 0.5,
           preferredCategories: selectedCats,
           preferredCategoryNames: categoryNames,
-          emailNotificationsEnabled,
-          expoPushToken: pushToken,
           isProfileComplete: true,
           updatedAt: serverTimestamp(),
         },
@@ -170,7 +123,6 @@ export default function CompleteProfile() {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
         >
-
           {/* STEP 0 */}
           {step === 0 && (
             <View>
@@ -225,6 +177,8 @@ export default function CompleteProfile() {
                   placeholderTextColor="#777"
                   value={name}
                   onChangeText={setName}
+                  autoFocus
+                  returnKeyType="done"
                 />
 
                 <View style={{ marginTop: 40 }}>
@@ -244,6 +198,11 @@ export default function CompleteProfile() {
                     minimumTrackTintColor="#FF6B6B"
                     thumbTintColor="#FF6B6B"
                     onValueChange={setIncome}
+                    onSlidingComplete={() =>
+                      Haptics.impactAsync(
+                        Haptics.ImpactFeedbackStyle.Light
+                      )
+                    }
                   />
                 </View>
               </View>
@@ -254,7 +213,10 @@ export default function CompleteProfile() {
                   !name.trim() && styles.buttonDisabled,
                 ]}
                 disabled={!name.trim()}
-                onPress={() => setStep(2)}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setStep(2);
+                }}
               >
                 <Text style={styles.mainButtonText}>Next</Text>
               </TouchableOpacity>
@@ -319,24 +281,12 @@ export default function CompleteProfile() {
               <Text style={styles.welcomeText}>Final Step</Text>
 
               <View style={styles.card}>
-                <View style={styles.toggleRow}>
-                  <Text style={styles.toggleLabel}>
-                    Get reminders & overspending alerts
-                  </Text>
-                  <Switch
-                    value={emailNotificationsEnabled}
-                    onValueChange={setEmailNotificationsEnabled}
-                    trackColor={{ false: '#555', true: '#FF6B6B' }}
-                    thumbColor="#fff"
-                  />
-                </View>
-
                 <Text style={styles.question}>
                   Which categories do you spend on most?
                 </Text>
 
                 <View style={styles.categoryGrid}>
-                  {categories.map(cat => (
+                  {categories.map((cat) => (
                     <TouchableOpacity
                       key={cat.id}
                       style={[
@@ -371,7 +321,6 @@ export default function CompleteProfile() {
               </TouchableOpacity>
             </View>
           )}
-
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -382,17 +331,6 @@ export default function CompleteProfile() {
 // STYLES
 // =======================
 const styles = StyleSheet.create({
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  toggleLabel: {
-    color: '#aaa',
-    fontSize: 14,
-    flex: 1,
-    marginRight: 10,
-  },
   container: { padding: 25, paddingTop: 60, paddingBottom: 50 },
   heroIconContainer: { alignItems: 'center', marginBottom: 20 },
   heroCircle: {
