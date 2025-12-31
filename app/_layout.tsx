@@ -13,7 +13,10 @@ export default function RootLayout() {
       <TransactionProvider>
         <ThemeProvider>
           <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false }} />
+          <Stack screenOptions={{ headerShown: false }}>
+            {/* Main Tabs layout */}
+            <Stack.Screen name="tabs" />
+          </Stack>
         </ThemeProvider>
       </TransactionProvider>
     </AuthProvider>
