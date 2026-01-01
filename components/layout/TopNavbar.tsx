@@ -149,7 +149,7 @@ export function TopNavbar() {
                     icon="grid-outline" 
                     title="Categories" 
                     subtitle="Manage icons" 
-                    route="/profile/categories" 
+                    route="/categories" 
                     color="#10b981" 
                   />
                 </View>

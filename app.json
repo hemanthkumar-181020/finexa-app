@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Finexa",
-    "slug": "Finexa",
+    "slug": "finexa",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Finexa"
+      "bundleIdentifier": "com.santhosh.finexa"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +21,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.Finexa"
+      "package": "com.santhosh.finexa"
     },
     "web": {
       "output": "static",
@@ -45,6 +45,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d727c4c2-b0ae-4218-8299-4d40004d2321"
+      }
     }
   }
 }
