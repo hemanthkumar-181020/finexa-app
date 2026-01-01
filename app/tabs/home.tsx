@@ -373,7 +373,7 @@ const budgetUtilization = monthlyBudget > 0
 
   // Navigate to goals page
   const navigateToGoals = () => {
-    router.push("/goals");
+    router.push("/analysis");
   };
 
   if (loading) {
@@ -460,11 +460,11 @@ const budgetUtilization = monthlyBudget > 0
             onPress={navigateToGoals}
           >
             <MaterialCommunityIcons
-              name="flag-checkered"
+              name="chart-line"
               size={24}
               color="#666"
             />
-            <Text style={styles.smallCardText}>Goals</Text>
+            <Text style={styles.smallCardText}>analysis</Text>
           </TouchableOpacity>
         </View>
 

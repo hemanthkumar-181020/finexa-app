@@ -43,28 +43,7 @@ export default function Banks() {
             <Text style={styles.subtitle}>SBI Digital Banking</Text>
           </View>
         </View>
-      </Pressable>
-
-      {/* ICICI */}
-      <Pressable
-        style={styles.card}
-        onPress={() => router.push("/banks/icici")}
-      >
-        <View style={styles.row}>
-          <View style={styles.logoWrapper}>
-            <Image
-              source={require("../../assets/images/icici.png")}
-              style={styles.logo}
-            />
-          </View>
-
-          <View style={styles.textBlock}>
-            <Text style={styles.title}>ICICI Bank</Text>
-            <Text style={styles.subtitle}>iMobile Pay</Text>
-          </View>
-        </View>
-      </Pressable>
-      
+      </Pressable>      
 <Pressable
   style={styles.card}
   onPress={() => router.push("/banks/messages")}
