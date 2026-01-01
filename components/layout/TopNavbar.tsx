@@ -152,6 +152,14 @@ export function TopNavbar() {
                     route="/categories" 
                     color="#10b981" 
                   />
+                  <View style={styles.divider} />
+                  <DrawerItem 
+                    icon="alarm" 
+                    title="remainders" 
+                    subtitle="Manage notifications" 
+                    route="/reminders" 
+                    color="brown" 
+                  />
                 </View>
 
                 <Text style={styles.groupLabel}>Automation</Text>
