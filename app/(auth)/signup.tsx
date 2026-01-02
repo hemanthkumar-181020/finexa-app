@@ -6,6 +6,9 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useRef, useState, useEffect } from 'react';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { Svg, Path } from 'react-native-svg';
+import { Switch} from 'react-native';
+
+import { MaterialIcons } from '@expo/vector-icons';
 
 import {
   Alert,
@@ -44,7 +47,7 @@ export default function Signup() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
-
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const buttonScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
@@ -160,6 +163,7 @@ export default function Signup() {
       uid: user.uid,
       email: user.email,
       username: username,
+      theme: 'dark',
 
       // 👤 Profile (initially empty)
       name: null,
@@ -381,6 +385,7 @@ export default function Signup() {
                   </Text>
                 </TouchableOpacity>
                 {errors.tos && <Text style={styles.errorText}>{errors.tos}</Text>}
+                {/* Add this simple toggle */}
 
                 {/* Submit Button */}
                 <TouchableOpacity
@@ -618,5 +623,46 @@ const styles = StyleSheet.create({
     ...Typography.bodySmall,
     color: 'grey',
     paddingHorizontal: Spacing.md,
+  },
+  /* Simple Toggle Styles */
+  themeToggleSimple: {
+    marginVertical: 16,
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  themeLabelSimple: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 12,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  toggleOption: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  toggleOptionActive: {
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  toggleSwitch: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleKnob: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
   },
 });

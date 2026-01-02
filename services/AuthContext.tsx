@@ -1,12 +1,17 @@
+// services/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { Platform } from 'react-native';
 
 interface UserProfile {
   username: string;
   email: string;
-  uid: string; // Added UID to profile
+  uid: string;
+  theme?: 'dark' | 'light';
+  isProfileComplete?: boolean;
+  createdAt?: string;
 }
 
 interface AuthContextType {
@@ -14,7 +19,9 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  refreshUser: () => Promise<void>; // Added refresh function
+  refreshUser: () => Promise<void>;
+  clearAllData: () => Promise<void>;
+  updateUserTheme: (theme: 'dark' | 'light') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +34,83 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Function to clear ALL web storage (Firebase persistence)
+  const clearWebStorage = async () => {
+    if (Platform.OS !== 'web') return;
+    
+    try {
+      console.log('[AuthContext] 🧹 Clearing web storage...');
+      
+      // 1. Clear localStorage (Firebase stores tokens here)
+      const firebaseKeys = Object.keys(localStorage).filter(key => 
+        key.includes('firebase') || 
+        key.includes('google') || 
+        key.includes('auth') ||
+        key.includes('token')
+      );
+      
+      firebaseKeys.forEach(key => {
+        localStorage.removeItem(key);
+      });
+      
+      // Also clear our app-specific storage
+      localStorage.removeItem('finexa_user');
+      localStorage.removeItem('finexa_auth');
+      
+      // 2. Clear sessionStorage
+      sessionStorage.clear();
+      
+      // 3. Clear IndexedDB (Firebase LocalStorage)
+      if (window.indexedDB) {
+        try {
+          // List all databases
+          const databases = await window.indexedDB.databases();
+          databases.forEach(dbInfo => {
+            if (dbInfo.name && (
+              dbInfo.name.includes('firebase') || 
+              dbInfo.name.includes('Firebase') ||
+              dbInfo.name === 'firebaseLocalStorageDb'
+            )) {
+              console.log(`Deleting IndexedDB: ${dbInfo.name}`);
+              window.indexedDB.deleteDatabase(dbInfo.name);
+            }
+          });
+        } catch (idbError) {
+          console.warn('IndexedDB cleanup warning:', idbError);
+        }
+      }
+      
+      // 4. Clear cookies
+      document.cookie.split(';').forEach(cookie => {
+        const name = cookie.split('=')[0].trim();
+        // Remove auth-related cookies
+        if (
+          name.includes('firebase') ||
+          name.includes('google') ||
+          name.includes('oauth') ||
+          name.includes('g_state') ||
+          name.includes('auth')
+        ) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+        }
+      });
+      
+      // 5. Clear service worker cache
+      if ('caches' in window) {
+        caches.keys().then(cacheNames => {
+          cacheNames.forEach(cacheName => {
+            caches.delete(cacheName);
+          });
+        });
+      }
+      
+      console.log('[AuthContext] ✅ Web storage cleared');
+      
+    } catch (error) {
+      console.error('[AuthContext] ❌ Error clearing web storage:', error);
+    }
+  };
 
   // Function to fetch user profile
   const fetchUserProfile = async (firebaseUser: User): Promise<UserProfile> => {
@@ -43,6 +127,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           uid: firebaseUser.uid,
           username: data.username || firebaseUser.email?.split('@')[0] || '',
           email: data.email || firebaseUser.email || '',
+          theme: data.theme || 'dark', // Default to dark theme
+          isProfileComplete: data.isProfileComplete || false,
+          createdAt: data.createdAt || new Date().toISOString(),
         };
       } else {
         console.log('[AuthContext] No user profile in Firestore, creating default');
@@ -52,6 +139,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           uid: firebaseUser.uid,
           username: firebaseUser.email?.split('@')[0] || 'User',
           email: firebaseUser.email || '',
+          theme: 'dark', // Default theme
+          isProfileComplete: false,
           createdAt: new Date().toISOString(),
         };
         
@@ -72,6 +161,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         uid: firebaseUser.uid,
         username: firebaseUser.email?.split('@')[0] || '',
         email: firebaseUser.email || '',
+        theme: 'dark', // Default theme on error
+        isProfileComplete: false,
       };
     }
   };
@@ -91,6 +182,80 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  // Function to update user theme
+  const updateUserTheme = async (theme: 'dark' | 'light') => {
+    if (!user) return;
+    
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        theme: theme,
+        updatedAt: new Date().toISOString(),
+      });
+      
+      // Update local state
+      setUserProfile(prev => prev ? { ...prev, theme } : null);
+      console.log(`[AuthContext] ✅ Theme updated to: ${theme}`);
+    } catch (error) {
+      console.error('[AuthContext] Error updating theme:', error);
+      throw error;
+    }
+  };
+
+  // Function to clear ALL data (public API)
+  const clearAllData = async () => {
+    console.log('[AuthContext] Clearing all user data...');
+    setUser(null);
+    setUserProfile(null);
+    await clearWebStorage();
+  };
+
+  // FIXED SIGN OUT FUNCTION
+  const signOut = async (): Promise<void> => {
+    console.log('[AuthContext] 🔐 Starting sign out process...');
+    
+    try {
+      // 1. Clear local React state FIRST
+      setUser(null);
+      setUserProfile(null);
+      
+      // 2. Sign out from Firebase
+      await firebaseSignOut(auth);
+      console.log('[AuthContext] ✅ Firebase sign out successful');
+      
+      // 3. Clear web storage (important for web!)
+      await clearWebStorage();
+      
+      // 4. Verify logout was successful
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      if (auth.currentUser) {
+        console.warn('[AuthContext] ⚠️ User still appears to be logged in, forcing cleanup...');
+        // Force additional cleanup
+        if (Platform.OS === 'web') {
+          localStorage.clear();
+          sessionStorage.clear();
+        }
+      }
+      
+      console.log('[AuthContext] 🎉 Sign out completed successfully');
+      
+    } catch (error: any) {
+      console.error('[AuthContext] ❌ Error during sign out:', error);
+      
+      // Even on error, clear local state
+      setUser(null);
+      setUserProfile(null);
+      
+      // Force web cleanup
+      if (Platform.OS === 'web') {
+        await clearWebStorage();
+      }
+      
+      throw new Error(`Sign out failed: ${error.message}`);
+    }
+  };
+
+  // Set up auth state listener
   useEffect(() => {
     console.log('[AuthContext] 🔥 Setting up auth listener...');
     
@@ -104,14 +269,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       if (firebaseUser) {
         try {
-          // Verify the user object has all necessary properties
-          console.log('[AuthContext] User details:', {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            emailVerified: firebaseUser.emailVerified,
-            isAnonymous: firebaseUser.isAnonymous,
-          });
-          
           // Fetch user profile from Firestore
           const profile = await fetchUserProfile(firebaseUser);
           setUserProfile(profile);
@@ -120,6 +277,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             uid: profile.uid,
             email: profile.email,
             username: profile.username,
+            theme: profile.theme,
           });
           
         } catch (error) {
@@ -130,6 +288,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             uid: firebaseUser.uid,
             username: firebaseUser.email?.split('@')[0] || '',
             email: firebaseUser.email || '',
+            theme: 'dark',
+            isProfileComplete: false,
           });
         }
       } else {
@@ -166,62 +326,89 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
-  const signOut = async () => {
-    console.log('[AuthContext] Signing out...');
-    try {
-      await firebaseSignOut(auth);
-      console.log('[AuthContext] ✅ Sign out successful');
-    } catch (error) {
-      console.error('[AuthContext] ❌ Error signing out:', error);
-      throw error;
+  // Debug function
+  const debugAuthState = () => {
+    console.log('[AuthContext] === DEBUG ===');
+    console.log('User:', user?.email || 'null');
+    console.log('User Profile:', userProfile?.email || 'null');
+    console.log('Current Theme:', userProfile?.theme || 'dark');
+    console.log('Firebase Current User:', auth.currentUser?.email || 'null');
+    console.log('Platform:', Platform.OS);
+    
+    if (Platform.OS === 'web') {
+      console.log('LocalStorage keys:', Object.keys(localStorage));
+      console.log('SessionStorage keys:', Object.keys(sessionStorage));
     }
   };
 
-  // Debug function to log current state
-  const logAuthState = () => {
-    console.log('[AuthContext] Current state:', {
-      user: user ? `UID: ${user.uid}, Email: ${user.email}` : 'null',
-      userProfile: userProfile ? `UID: ${userProfile.uid}, Username: ${userProfile.username}` : 'null',
-      loading,
-      currentAuthUser: auth.currentUser ? `UID: ${auth.currentUser.uid}` : 'null',
-    });
-  };
-
-  // Log state changes
+  // Log state changes for debugging
   useEffect(() => {
-    logAuthState();
+    console.log('[AuthContext] 📊 State updated:', {
+      user: user?.email || 'null',
+      userProfile: userProfile?.email || 'null',
+      theme: userProfile?.theme || 'dark',
+      loading
+    });
   }, [user, userProfile, loading]);
 
+  const value = {
+    user,
+    userProfile,
+    loading,
+    signOut,
+    refreshUser,
+    clearAllData,
+    updateUserTheme,
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      userProfile, 
-      loading, 
-      signOut,
-      refreshUser // Added refresh function
-    }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
+  
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   
-  // Add a helper to get the UID safely
-  const getUid = () => {
-    if (context.user?.uid) return context.user.uid;
-    if (context.userProfile?.uid) return context.userProfile.uid;
-    return null;
-  };
-  
-  // Return enhanced context
+  // Enhanced return with helper methods
   return {
     ...context,
-    getUid, // Helper method
+    // Helper to get UID safely
+    getUid: () => {
+      if (context.user?.uid) return context.user.uid;
+      if (context.userProfile?.uid) return context.userProfile.uid;
+      return null;
+    },
+    // Check if user is authenticated
     isAuthenticated: !!context.user,
+    // Check if profile is complete
+    isProfileComplete: context.userProfile?.isProfileComplete || false,
+    // Get current theme
+    currentTheme: context.userProfile?.theme || 'dark',
+    // Quick logout with redirect (web only)
+    logoutAndRedirect: async (redirectPath: string = '/login') => {
+      try {
+        await context.signOut();
+        if (Platform.OS === 'web') {
+          window.location.href = redirectPath;
+        }
+      } catch (error) {
+        console.error('Logout and redirect failed:', error);
+        if (Platform.OS === 'web') {
+          window.location.href = redirectPath;
+        }
+      }
+    },
+    // Quick theme toggle helper
+    toggleTheme: async () => {
+      const newTheme = context.userProfile?.theme === 'dark' ? 'light' : 'dark';
+      await context.updateUserTheme(newTheme);
+      return newTheme;
+    },
   };
 }

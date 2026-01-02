@@ -45,10 +45,40 @@ export function TopNavbar() {
         style: "destructive",
         onPress: async () => {
           try {
+            // Sign out from Firebase
             await signOut();
             setMenuVisible(false);
-          } catch {
-            Alert.alert("Error", "Failed to logout.");
+            
+            // WEB: Force redirect and clear everything
+            if (Platform.OS === 'web') {
+              // Clear all storage
+              localStorage.clear();
+              sessionStorage.clear();
+              
+              // Clear IndexedDB (Firebase persistence)
+              if (window.indexedDB) {
+                indexedDB.deleteDatabase('firebaseLocalStorageDb');
+              }
+              
+              // Force redirect to login
+              setTimeout(() => {
+                window.location.href = '/login';
+                window.location.reload();
+              }, 300);
+            } else {
+              // Mobile: Navigate to login
+              router.replace('/login');
+            }
+            
+          } catch (error) {
+            console.error('Logout error:', error);
+            
+            // Even on error, try to redirect
+            if (Platform.OS === 'web') {
+              window.location.href = '/login';
+            } else {
+              router.replace('/login');
+            }
           }
         },
       },
@@ -155,7 +185,7 @@ export function TopNavbar() {
                   <View style={styles.divider} />
                   <DrawerItem 
                     icon="alarm" 
-                    title="remainders" 
+                    title="Reminders" 
                     subtitle="Manage notifications" 
                     route="/reminders" 
                     color="brown" 
