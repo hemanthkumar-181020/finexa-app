@@ -115,24 +115,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Function to fetch user profile
   const fetchUserProfile = async (firebaseUser: User): Promise<UserProfile> => {
     try {
-      console.log('[AuthContext] Fetching user profile for UID:', firebaseUser.uid);
+      console.log('[AuthContext] 📥 Fetching user profile for UID:', firebaseUser.uid);
       
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
       
       if (userDoc.exists()) {
         const data = userDoc.data();
-        console.log('[AuthContext] User profile found in Firestore:', data);
+        console.log('[AuthContext] ✅ User profile found in Firestore');
+        
+        // Log theme specifically for debugging
+        console.log('[AuthContext] 🔍 Theme field in Firestore:', data.theme);
+        console.log('[AuthContext] 🔍 Full data keys:', Object.keys(data));
         
         return {
           uid: firebaseUser.uid,
           username: data.username || firebaseUser.email?.split('@')[0] || '',
           email: data.email || firebaseUser.email || '',
-          theme: data.theme || 'dark', // Default to dark theme
+          theme: data.theme || 'dark', // Default to dark theme if not found
           isProfileComplete: data.isProfileComplete || false,
           createdAt: data.createdAt || new Date().toISOString(),
         };
       } else {
-        console.log('[AuthContext] No user profile in Firestore, creating default');
+        console.log('[AuthContext] ⚠️ No user profile in Firestore, creating default');
         
         // Create a default profile if it doesn't exist
         const defaultProfile = {
@@ -146,7 +150,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         try {
           await setDoc(doc(db, 'users', firebaseUser.uid), defaultProfile, { merge: true });
-          console.log('[AuthContext] Created default user profile');
+          console.log('[AuthContext] ✅ Created default user profile');
         } catch (writeError) {
           console.warn('[AuthContext] Could not create user profile:', writeError);
         }
@@ -154,7 +158,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return defaultProfile;
       }
     } catch (error) {
-      console.error('[AuthContext] Error fetching user profile:', error);
+      console.error('[AuthContext] ❌ Error fetching user profile:', error);
       
       // Return fallback profile
       return {
@@ -171,39 +175,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshUser = async () => {
     const currentUser = auth.currentUser;
     if (currentUser) {
-      console.log('[AuthContext] Manually refreshing user data...');
+      console.log('[AuthContext] 🔄 Manually refreshing user data...');
       try {
         const profile = await fetchUserProfile(currentUser);
         setUser(currentUser);
         setUserProfile(profile);
+        console.log('[AuthContext] ✅ User data refreshed');
       } catch (error) {
-        console.error('[AuthContext] Error refreshing user:', error);
+        console.error('[AuthContext] ❌ Error refreshing user:', error);
       }
     }
   };
 
   // Function to update user theme
   const updateUserTheme = async (theme: 'dark' | 'light') => {
-    if (!user) return;
+    if (!user) {
+      console.warn('[AuthContext] ⚠️ No user found, cannot update theme');
+      return;
+    }
     
     try {
+      console.log(`[AuthContext] 🎨 Updating theme to: ${theme}`);
+      
       await updateDoc(doc(db, 'users', user.uid), {
         theme: theme,
         updatedAt: new Date().toISOString(),
       });
       
       // Update local state
-      setUserProfile(prev => prev ? { ...prev, theme } : null);
-      console.log(`[AuthContext] ✅ Theme updated to: ${theme}`);
+      setUserProfile(prev => {
+        if (!prev) {
+          console.warn('[AuthContext] No userProfile to update');
+          return prev;
+        }
+        console.log(`[AuthContext] ✅ Local theme updated to: ${theme}`);
+        return { ...prev, theme };
+      });
+      
     } catch (error) {
-      console.error('[AuthContext] Error updating theme:', error);
+      console.error('[AuthContext] ❌ Error updating theme:', error);
       throw error;
     }
   };
 
   // Function to clear ALL data (public API)
   const clearAllData = async () => {
-    console.log('[AuthContext] Clearing all user data...');
+    console.log('[AuthContext] 🧹 Clearing all user data...');
     setUser(null);
     setUserProfile(null);
     await clearWebStorage();
@@ -273,7 +290,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const profile = await fetchUserProfile(firebaseUser);
           setUserProfile(profile);
           
-          console.log('[AuthContext] ✅ User and profile loaded:', {
+          console.log('[AuthContext] ✅ User and profile loaded successfully');
+          console.log('[AuthContext] 📋 Profile details:', {
             uid: profile.uid,
             email: profile.email,
             username: profile.username,
@@ -306,12 +324,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Also check immediate auth state
     const immediateCheck = async () => {
       const currentUser = auth.currentUser;
-      console.log('[AuthContext] Immediate auth check:', 
+      console.log('[AuthContext] ⚡ Immediate auth check:', 
         currentUser ? `User exists (UID: ${currentUser.uid})` : 'No current user'
       );
       
-      if (currentUser && !user) {
-        // If there's a user but our state hasn't updated yet
+      if (currentUser) {
+        // Set user immediately if exists
         setUser(currentUser);
         const profile = await fetchUserProfile(currentUser);
         setUserProfile(profile);
@@ -343,12 +361,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Log state changes for debugging
   useEffect(() => {
-    console.log('[AuthContext] 📊 State updated:', {
-      user: user?.email || 'null',
-      userProfile: userProfile?.email || 'null',
-      theme: userProfile?.theme || 'dark',
-      loading
-    });
+    if (userProfile) {
+      console.log('[AuthContext] 📊 Auth state updated:', {
+        user: user?.email || 'null',
+        userProfile: userProfile.email || 'null',
+        theme: userProfile.theme || 'dark',
+        loading
+      });
+    }
   }, [user, userProfile, loading]);
 
   const value = {
@@ -406,7 +426,12 @@ export function useAuth() {
     },
     // Quick theme toggle helper
     toggleTheme: async () => {
-      const newTheme = context.userProfile?.theme === 'dark' ? 'light' : 'dark';
+      if (!context.userProfile) {
+        console.warn('No user profile to toggle theme');
+        return 'dark';
+      }
+      
+      const newTheme = context.userProfile.theme === 'dark' ? 'light' : 'dark';
       await context.updateUserTheme(newTheme);
       return newTheme;
     },

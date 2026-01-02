@@ -1,34 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Text, TouchableOpacity, Dimensions, Image } from 'react-native';
+import { View, StyleSheet, Animated, Text, TouchableOpacity, Dimensions, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 const { width, height } = Dimensions.get('window');
-import {auth} from '../services/firebase';
+import { auth, db } from '../services/firebase';
 
 export default function Splash() {
   const router = useRouter();
   
-  
+  // Animation refs (same as before)
   const barsOpacity = useRef(new Animated.Value(1)).current;
   const barsClipHeight = useRef(new Animated.Value(0)).current;
-  
-  
   const sunOpacity = useRef(new Animated.Value(1)).current;
   const sunClipHeight = useRef(new Animated.Value(0)).current;
-  
-  
   const arrowOpacity = useRef(new Animated.Value(1)).current;
   const arrowClipWidth = useRef(new Animated.Value(0)).current;
-  
-  
   const loadingBarOpacity = useRef(new Animated.Value(0)).current;
   const infiniteBarPosition = useRef(new Animated.Value(0)).current;
-  
-  
   const logoScale = useRef(new Animated.Value(1)).current;
   const logoTranslateY = useRef(new Animated.Value(0)).current;
-  
-  
   const letterF = useRef(new Animated.ValueXY({ x: -250, y: -250 })).current;
   const letterI = useRef(new Animated.ValueXY({ x: 250, y: -250 })).current;
   const letterN = useRef(new Animated.ValueXY({ x: -250, y: 250 })).current;
@@ -36,49 +27,37 @@ export default function Splash() {
   const letterX = useRef(new Animated.ValueXY({ x: -250, y: 0 })).current;
   const letterA = useRef(new Animated.ValueXY({ x: 250, y: 0 })).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
-  
-  
   const buttonOpacity = useRef(new Animated.Value(0)).current;
   const buttonTranslateY = useRef(new Animated.Value(60)).current;
   const buttonScale = useRef(new Animated.Value(0.8)).current;
-  const [user,setUser]=useState(null);
+  
+  // State variables
+  const [authUser, setAuthUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [initializing, setInitializing] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     Animated.sequence([
-      
       Animated.delay(300),
-      
-      
       Animated.timing(barsClipHeight, {
         toValue: 1,
         duration: 1200,
         useNativeDriver: false,
       }),
-      
-      
       Animated.delay(300),
-      
-     
       Animated.timing(sunClipHeight, {
         toValue: 1,
         duration: 1400,
         useNativeDriver: false,
       }),
-      
-      
       Animated.delay(400),
-      
-      
       Animated.timing(arrowClipWidth, {
         toValue: 1,
         duration: 1200,
         useNativeDriver: false,
       }),
-      
-      
       Animated.delay(700),
-      
-      
       Animated.parallel([
         Animated.timing(logoScale, {
           toValue: 0.4,
@@ -91,20 +70,13 @@ export default function Splash() {
           useNativeDriver: true,
         }),
       ]),
-      
-      
       Animated.delay(200),
-      
       Animated.timing(loadingBarOpacity, {
         toValue: 1,
         duration: 400,
         useNativeDriver: true,
       }),
-      
-      
       Animated.delay(400),
-      
-      
       Animated.parallel([
         Animated.timing(textOpacity, {
           toValue: 1,
@@ -148,11 +120,7 @@ export default function Splash() {
           useNativeDriver: true,
         }),
       ]),
-      
-      
       Animated.delay(400),
-      
-      
       Animated.parallel([
         Animated.timing(buttonOpacity, {
           toValue: 1,
@@ -174,7 +142,6 @@ export default function Splash() {
       ]),
     ]).start();
 
-    
     const startInfiniteAnimation = () => {
       infiniteBarPosition.setValue(0);
       Animated.loop(
@@ -193,37 +160,85 @@ export default function Splash() {
       ).start();
     };
 
-    
     setTimeout(startInfiniteAnimation, 5000);
   }, []);
 
-
-
-  const [initializing, setInitializing] = useState(true);
+  // Fetch user data from Firestore when auth state changes
   useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    setUser(user);
-    if (initializing) setInitializing(false);
-  });
-  return unsubscribe;
-}, []);
-
-
-
-  const handleGetStarted = () => {
-  if (user) {
-    router.replace('/tabs/home');
-  } else {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setAuthUser(user);
+      
+      if (user) {
+        // Fetch user document from Firestore
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setUserData(userDoc.data());
+          } else {
+            setUserData(null);
+          }
+        } catch (error) {
+          console.log('Error fetching user data:', error);
+          setUserData(null);
+        }
+      } else {
+        setUserData(null);
+      }
+      
+      if (initializing) {
+        setInitializing(false);
+      }
+    });
     
-    router.replace('/(auth)/signup');
-  }
-};
+    return unsubscribe;
+  }, []);
+
+  const handleGetStarted = async () => {
+    // If still initializing auth, don't navigate yet
+    if (initializing) {
+      return;
+    }
+
+    if (loading) {
+      return; // Prevent multiple clicks
+    }
+
+    setLoading(true);
+
+    if (authUser) {
+      try {
+        // Double-check Firestore data before navigating
+        const userDoc = await getDoc(doc(db, 'users', authUser.uid));
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          
+          // Check if profile is complete
+          if (userData.isProfileComplete === true) {
+            router.replace('/tabs/home');
+          } else {
+            router.replace('/completeprofile');
+          }
+        } else {
+          // User document doesn't exist, go to complete profile
+          router.replace('/completeprofile');
+        }
+      } catch (error) {
+        console.log('Error checking user data:', error);
+        // Fallback - go to complete profile
+        router.replace('/completeprofile');
+      }
+    } else {
+      // User is not logged in
+      router.replace('/(auth)/signup');
+    }
+    
+    setLoading(false);
+  };
 
   return (
     <View style={styles.container}>
-      
       <View style={styles.gradientOverlay} />
-      
       
       <Animated.View style={[styles.textContainer, { opacity: textOpacity }]}>
         <Animated.Text
@@ -276,7 +291,6 @@ export default function Splash() {
         </Animated.Text>
       </Animated.View>
 
-      
       <Animated.View 
         style={[
           styles.logoContainer,
@@ -309,7 +323,7 @@ export default function Splash() {
           </Animated.View>
         </View>
 
-        
+        {/* Bars */}
         <View style={styles.barsWrapper}>
           <Animated.View
             style={[
@@ -330,7 +344,7 @@ export default function Splash() {
           </Animated.View>
         </View>
 
-        
+        {/* Arrow */}
         <View style={styles.arrowWrapper}>
           <Animated.View
             style={[
@@ -384,12 +398,19 @@ export default function Splash() {
         ]}
       >
         <TouchableOpacity 
-          style={styles.button} 
+          style={[styles.button, loading && styles.buttonDisabled]} 
           onPress={handleGetStarted}
           activeOpacity={0.8}
+          disabled={loading}
         >
-          <Text style={styles.buttonText}>Get Started</Text>
-          <View style={styles.buttonGlow} />
+          {loading ? (
+            <ActivityIndicator color="#00082f" />
+          ) : (
+            <>
+              <Text style={styles.buttonText}>Get Started</Text>
+              <View style={styles.buttonGlow} />
+            </>
+          )}
         </TouchableOpacity>
         <Text style={styles.subtitle}>
           Smart expense tracking that learns from your spending
@@ -439,8 +460,6 @@ const styles = StyleSheet.create({
     height: height * 0.5,
     position: 'relative',
   },
-  
-  
   sunWrapper: {
     position: 'absolute',
     width: 200,
@@ -465,8 +484,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
   },
-  
-  
   barsWrapper: {
     position: 'absolute',
     width: 280,
@@ -491,7 +508,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
   },
-  
   arrowWrapper: {
     position: 'absolute',
     width: 290,
@@ -516,8 +532,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
   },
-  
-  // LOADING BAR STYLING
   loadingBarContainer: {
     position: 'absolute',
     bottom: '10%',
@@ -545,8 +559,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 8,
   },
-  
-  
   buttonContainer: {
     position: 'absolute',
     bottom: height * 0.08,
@@ -568,6 +580,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(131, 207, 203, 0.3)',
     position: 'relative',
     overflow: 'hidden',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonGlow: {
     position: 'absolute',

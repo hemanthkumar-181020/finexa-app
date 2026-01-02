@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
-  useColorScheme,
   Switch,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -16,18 +15,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../../services/firebase';
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 export default function EditProfile() {
   const router = useRouter();
   const user = auth.currentUser;
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // 🎨 THEME (Firestore only)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [isThemeEnabled, setIsThemeEnabled] = useState(false);
 
   const [phone, setPhone] = useState('');
   const [gender, setGender] = useState('');
@@ -79,79 +77,55 @@ export default function EditProfile() {
 
   const currentColors = colors[theme];
 
-  /* ---------------- LOAD USER DATA & THEME ---------------- */
-
+  /* ---------------- LOAD PROFILE + THEME ---------------- */
   useEffect(() => {
     const loadProfile = async () => {
       if (!user) return;
 
       try {
-        // First try to load user profile
         const snap = await getDoc(doc(db, 'users', user.uid));
+
         if (snap.exists()) {
           const d = snap.data();
+
           setPhone(d.phone || '');
           setGender(d.gender || '');
           setOccupation(d.occupation || '');
           setDob(d.dob?.seconds ? new Date(d.dob.seconds * 1000) : null);
-          
-          // Check if user has theme preference
-          if (d.theme) {
+
+          // ✅ FETCH THEME FROM FIRESTORE ON RELOAD
+          if (d.theme === 'dark' || d.theme === 'light') {
             setTheme(d.theme);
-            setIsThemeEnabled(true);
-          } else {
-            // Try to get theme from global settings
-            try {
-              const globalRef = doc(db, 'global', 'settings');
-              const globalSnap = await getDoc(globalRef);
-              if (globalSnap.exists() && globalSnap.data().theme) {
-                const globalTheme = globalSnap.data().theme;
-                setTheme(globalTheme);
-                setIsThemeEnabled(true);
-              } else {
-                // Fallback to system or default dark
-                setTheme(isDark ? 'dark' : 'light');
-                setIsThemeEnabled(false);
-              }
-            } catch (globalError) {
-              console.log('Global settings not found, using default theme');
-              setTheme(isDark ? 'dark' : 'light');
-              setIsThemeEnabled(false);
-            }
           }
         }
-      } catch (error) {
-        console.log('Error loading profile:', error);
+      } catch (err) {
+        console.log('Load profile error:', err);
       } finally {
         setLoading(false);
       }
     };
 
     loadProfile();
-  }, [user, isDark]);
+  }, [user]);
 
-  /* ---------------- TOGGLE THEME ---------------- */
-
+  /* ---------------- TOGGLE THEME (BACKEND UPDATE ONLY) ---------------- */
   const toggleTheme = async () => {
+    if (!user) return;
+
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
-    setIsThemeEnabled(!isThemeEnabled);
-    
-    // Save theme preference to user profile
-    if (user) {
-      try {
-        await updateDoc(doc(db, 'users', user.uid), {
-          theme: newTheme,
-          updatedAt: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.log('Error saving theme:', error);
-      }
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        theme: newTheme, // ✅ BACKEND CHANGE
+        updatedAt: new Date(),
+      });
+    } catch (err) {
+      console.log('Theme update error:', err);
     }
   };
 
   /* ---------------- PHONE VALIDATION ---------------- */
-
   const handlePhoneChange = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
     setPhone(cleaned);
@@ -171,8 +145,7 @@ export default function EditProfile() {
   const isPhoneValid = /^[6-9]\d{9}$/.test(phone);
   const canSave = isPhoneValid && gender && dob;
 
-  /* ---------------- SAVE ---------------- */
-
+  /* ---------------- SAVE PROFILE ---------------- */
   const handleSave = async () => {
     if (!user || !canSave) return;
 
@@ -183,10 +156,9 @@ export default function EditProfile() {
         gender,
         occupation,
         dob,
-        theme: isThemeEnabled ? theme : null,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
       });
-      router.back(); // ✅ GO BACK TO /profile
+      router.back();
     } catch (err) {
       console.log('Profile update error:', err);
     } finally {
@@ -195,7 +167,6 @@ export default function EditProfile() {
   };
 
   /* ---------------- LOADING ---------------- */
-
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: currentColors.background }]}>
@@ -206,20 +177,22 @@ export default function EditProfile() {
 
   return (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: currentColors.background }]}>
-      {/* HEADER WITH THEME TOGGLE */}
+      {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={26} color={currentColors.header} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: currentColors.header }]}>Edit Profile</Text>
+          <Text style={[styles.headerTitle, { color: currentColors.header }]}>
+            Edit Profile
+          </Text>
         </View>
-        
+
         <View style={styles.themeToggleContainer}>
-          <MaterialIcons 
-            name={theme === 'dark' ? 'dark-mode' : 'light-mode'} 
-            size={22} 
-            color={currentColors.icon} 
+          <MaterialIcons
+            name={theme === 'dark' ? 'dark-mode' : 'light-mode'}
+            size={22}
+            color={currentColors.icon}
           />
           <Switch
             value={theme === 'dark'}
@@ -227,20 +200,12 @@ export default function EditProfile() {
             trackColor={{ false: currentColors.toggleTrack, true: currentColors.toggleTrack }}
             thumbColor={currentColors.toggleThumb}
             ios_backgroundColor={currentColors.toggleTrack}
-            style={styles.themeSwitch}
           />
-          <Text style={[styles.themeLabel, { color: currentColors.textSecondary }]}>
-            {theme === 'dark' ? 'Dark' : 'Light'}
-          </Text>
         </View>
       </View>
 
-      {/* FORM CARD */}
-      <View style={[styles.card, { 
-        backgroundColor: currentColors.card,
-        borderColor: currentColors.border 
-      }]}>
-        {/* PHONE */}
+      {/* FORM */}
+      <View style={[styles.card, { backgroundColor: currentColors.card, borderColor: currentColors.border }]}>
         <Label text="Phone Number" color={currentColors.label} />
         <Input
           icon="call"
@@ -256,24 +221,18 @@ export default function EditProfile() {
         />
         {phoneError ? <Error text={phoneError} color={currentColors.error} /> : null}
 
-        {/* GENDER */}
         <Label text="Gender" color={currentColors.label} />
         <View style={styles.genderRow}>
           {['Male', 'Female', 'Other'].map(g => (
             <TouchableOpacity
               key={g}
               onPress={() => setGender(g)}
-              activeOpacity={0.85}
               style={[
                 styles.genderPill,
-                { 
-                  backgroundColor: currentColors.inputBg,
-                  borderColor: currentColors.border 
-                },
+                { backgroundColor: currentColors.inputBg, borderColor: currentColors.border },
                 gender === g && {
                   backgroundColor: currentColors.accentLight,
                   borderColor: currentColors.accent,
-                  borderWidth: 1.5,
                 },
               ]}
             >
@@ -281,10 +240,7 @@ export default function EditProfile() {
                 style={[
                   styles.genderText,
                   { color: currentColors.textSecondary },
-                  gender === g && {
-                    color: currentColors.accent,
-                    fontWeight: '700',
-                  },
+                  gender === g && { color: currentColors.accent },
                 ]}
               >
                 {g}
@@ -293,7 +249,6 @@ export default function EditProfile() {
           ))}
         </View>
 
-        {/* OCCUPATION */}
         <Label text="Occupation" color={currentColors.label} />
         <Input
           icon="briefcase"
@@ -306,16 +261,9 @@ export default function EditProfile() {
           borderColor={currentColors.border}
         />
 
-        {/* DOB */}
         <Label text="Date of Birth" color={currentColors.label} />
         <TouchableOpacity
-          style={[
-            styles.dobInput,
-            { 
-              backgroundColor: currentColors.inputBg,
-              borderColor: currentColors.border 
-            }
-          ]}
+          style={[styles.dobInput, { backgroundColor: currentColors.inputBg, borderColor: currentColors.border }]}
           onPress={() => setShowDatePicker(true)}
         >
           <Ionicons name="calendar" size={20} color={currentColors.accent} />
@@ -339,35 +287,15 @@ export default function EditProfile() {
       </View>
 
       {/* SAVE BUTTON */}
-      <TouchableOpacity
-        onPress={handleSave}
-        disabled={!canSave || saving}
-        activeOpacity={0.9}
-        style={{ opacity: canSave ? 1 : 0.6 }}
-      >
+      <TouchableOpacity onPress={handleSave} disabled={!canSave || saving}>
         <LinearGradient
           colors={canSave ? currentColors.buttonGradient : currentColors.buttonDisabled}
-          style={[
-            styles.saveButton,
-            { borderColor: canSave ? 'rgba(0, 255, 240, 0.3)' : currentColors.border }
-          ]}
+          style={styles.saveButton}
         >
           {saving ? (
-            <ActivityIndicator color={theme === 'dark' ? '#000' : '#FFF'} />
+            <ActivityIndicator color="#000" />
           ) : (
-            <>
-              <Text style={[
-                styles.saveText,
-                { color: theme === 'dark' ? '#000' : '#FFF' }
-              ]}>
-                Save Changes
-              </Text>
-              <Ionicons 
-                name="checkmark" 
-                size={22} 
-                color={theme === 'dark' ? '#000' : '#FFF'} 
-              />
-            </>
+            <Text style={styles.saveText}>Save Changes</Text>
           )}
         </LinearGradient>
       </TouchableOpacity>
@@ -375,166 +303,35 @@ export default function EditProfile() {
   );
 }
 
-/* ---------------- SMALL UI COMPONENTS ---------------- */
+/* ---------------- SMALL COMPONENTS ---------------- */
+const Label = ({ text, color }: any) => <Text style={[styles.label, { color }]}>{text}</Text>;
+const Error = ({ text, color }: any) => <Text style={[styles.error, { color }]}>{text}</Text>;
 
-const Label = ({ text, color }: any) => (
-  <Text style={[styles.label, { color }]}>{text}</Text>
-);
-
-const Error = ({ text, color }: any) => (
-  <Text style={[styles.error, { color }]}>{text}</Text>
-);
-
-interface InputProps {
-  icon: string;
-  iconColor: string;
-  inputColor: string;
-  placeholderColor: string;
-  backgroundColor: string;
-  borderColor: string;
-  [key: string]: any;
-}
-
-const Input = ({ 
-  icon, 
-  iconColor, 
-  inputColor, 
-  placeholderColor, 
-  backgroundColor, 
-  borderColor, 
-  ...props 
-}: InputProps) => (
-  <View style={[
-    styles.inputWrapper, 
-    { 
-      backgroundColor, 
-      borderColor 
-    }
-  ]}>
+const Input = ({ icon, iconColor, inputColor, placeholderColor, backgroundColor, borderColor, ...props }: any) => (
+  <View style={[styles.inputWrapper, { backgroundColor, borderColor }]}>
     <Ionicons name={icon} size={20} color={iconColor} />
-    <TextInput
-      style={[styles.input, { color: inputColor }]}
-      placeholderTextColor={placeholderColor}
-      {...props}
-    />
+    <TextInput style={[styles.input, { color: inputColor }]} placeholderTextColor={placeholderColor} {...props} />
   </View>
 );
 
 /* ---------------- STYLES ---------------- */
-
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    padding: 20,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    marginTop: Platform.OS === 'ios' ? 50 : 20,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  themeToggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  themeSwitch: {
-    transform: Platform.OS === 'ios' ? [{ scaleX: 0.8 }, { scaleY: 0.8 }] : [],
-  },
-  themeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    minWidth: 40,
-  },
-  card: {
-    borderRadius: 22,
-    padding: 20,
-    marginBottom: 28,
-    borderWidth: 1,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 18,
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 52,
-    gap: 12,
-    borderWidth: 1,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  error: {
-    fontSize: 12,
-    marginTop: 6,
-    marginLeft: 4,
-  },
-  genderRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  genderPill: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  genderText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  dobInput: {
-    height: 52,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    gap: 12,
-    borderWidth: 1,
-  },
-  dobText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  saveButton: {
-    height: 58,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 40,
-    borderWidth: 1,
-  },
-  saveText: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
+  container: { flexGrow: 1, padding: 20 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  headerTitle: { fontSize: 24, fontWeight: '700' },
+  themeToggleContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  card: { borderRadius: 22, padding: 20, marginBottom: 28, borderWidth: 1 },
+  label: { fontSize: 14, fontWeight: '600', marginTop: 18, marginBottom: 8 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: 14, paddingHorizontal: 14, gap: 12, borderWidth: 1 },
+  input: { flex: 1, fontSize: 16 },
+  error: { fontSize: 12, marginTop: 6 },
+  genderRow: { flexDirection: 'row', gap: 12 },
+  genderPill: { flex: 1, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+  genderText: { fontSize: 15, fontWeight: '600' },
+  dobInput: { height: 52, borderRadius: 14, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 12, borderWidth: 1 },
+  dobText: { fontSize: 16, fontWeight: '500' },
+  saveButton: { height: 58, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  saveText: { fontSize: 17, fontWeight: '700', color: '#000' },
 });
