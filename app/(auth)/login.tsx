@@ -40,12 +40,13 @@ export default function Login() {
 
   // Google Auth request
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: '898226239130-o5283d0f0ta7s0jnqv3idqi6hfvvg20i.apps.googleusercontent.com',
+    androidClientId: '898226239130-flo9kagl8vtuv5bg4g8g7igegnk8ua18.apps.googleusercontent.com',
     iosClientId: '<YOUR_IOS_CLIENT_ID>',
     expoClientId: '898226239130-v26hhs3onrsafhbg59035bc0jfqj50d2.apps.googleusercontent.com',
     webClientId: '<YOUR_WEB_CLIENT_ID>',
-    responseType: 'id_token', // simple test flow
-    usePKCE: true,            // required for secure flow
+    responseType: 'code', // ✅ Authorization code flow
+  usePKCE: true, // ✅ PKCE enabled
+  scopes: ['profile', 'email'],     // required for secure flow
   });
 
   // Fade-in animation
@@ -54,12 +55,15 @@ export default function Login() {
   }, [fadeAnim]);
 
   // Google Sign-In handler
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const idToken = response.authentication?.idToken;
-      if (!idToken) return;
-
-      const credential = GoogleAuthProvider.credential(idToken);
+  
+// CHANGE TO THIS:
+useEffect(() => {
+  if (response?.type === 'success') {
+    const { authentication } = response;
+    
+    if (authentication?.idToken) {
+      // For id_token flow (backward compatibility)
+      const credential = GoogleAuthProvider.credential(authentication.idToken);
       signInWithCredential(auth, credential)
         .then(async () => {
           const user = auth.currentUser;
@@ -73,8 +77,14 @@ export default function Login() {
           }
         })
         .catch(err => Alert.alert('Google Sign-In failed', err.message));
+    } else if (response.params?.code) {
+      // For authorization code flow
+      // You need to exchange the code for tokens
+      Alert.alert('Authorization code received', 'Implement token exchange');
+      // Add token exchange logic here
     }
-  }, [response, router]);
+  }
+}, [response, router]);
 
   // Input focus and blur
   const handleInputFocus = (inputName: string) => { setFocusedInput(inputName); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
