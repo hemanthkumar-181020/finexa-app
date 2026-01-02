@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   View,
@@ -9,20 +10,29 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Dimensions,
+  SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Slider from '@react-native-community/slider';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap } from 'lucide-react-native';
+import {
+  Zap,
+  ArrowLeft,
+  ShieldCheck,
+  MessageSquare,
+  Target,
+  AlertTriangle,
+  ChevronRight,
+} from 'lucide-react-native';
 
-// Firebase
 import { auth, db } from '../services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-// =======================
-// CONSTANTS
-// =======================
+const { width } = Dimensions.get('window');
+
+// Full category list (second snippet)
 const categories = [
   { id: 'food', name: 'Food & Dining', icon: '🍕' },
   { id: 'groceries', name: 'Groceries', icon: '🛒' },
@@ -43,27 +53,21 @@ const categories = [
   { id: 'tech', name: 'Technology & Software', icon: '💻' },
 ];
 
-
 export default function CompleteProfile() {
   const router = useRouter();
-
-  // =======================
-  // STATE
-  // =======================
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1); // 1–4 as in first UI
   const [name, setName] = useState('');
   const [income, setIncome] = useState(50000);
   const [spendingLimit, setSpendingLimit] = useState('');
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // =======================
-  // HELPERS
-  // =======================
   const toggleCategory = (id: string) => {
     Haptics.selectionAsync();
-    setSelectedCats((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    setSelectedCats(prev =>
+      prev.includes(id)
+        ? prev.filter(i => i !== id)
+        : [...prev, id],
     );
   };
 
@@ -73,20 +77,16 @@ export default function CompleteProfile() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
-  // =======================
-  // SAVE PROFILE
-  // =======================
   const handleFinish = async () => {
-    if (selectedCats.length === 0 || loading) return;
+    if (loading) return;
     setLoading(true);
-
     try {
       const user = auth.currentUser;
       if (!user) return;
 
       const categoryNames = categories
-        .filter((c) => selectedCats.includes(c.id))
-        .map((c) => c.name);
+        .filter(c => selectedCats.includes(c.id))
+        .map(c => c.name);
 
       await setDoc(
         doc(db, 'users', user.uid),
@@ -100,7 +100,7 @@ export default function CompleteProfile() {
           isProfileComplete: true,
           updatedAt: serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       );
 
       router.replace('/tabs/home');
@@ -110,344 +110,577 @@ export default function CompleteProfile() {
     }
   };
 
-  // =======================
-  // UI
-  // =======================
+  const ProgressBar = () => (
+    <View style={styles.progressContainer}>
+      {[1, 2, 3, 4].map(s => (
+        <View
+          key={s}
+          style={[
+            styles.progressStep,
+            step >= s
+              ? styles.progressStepActive
+              : styles.progressStepInactive,
+          ]}
+        />
+      ))}
+    </View>
+  );
+
   return (
-    <LinearGradient colors={['#1E1E2C', '#12121A']} style={{ flex: 1 }}>
+    <View style={styles.mainWrapper}>
+      <LinearGradient
+        colors={['#000000', '#0A0C0E']}
+        style={StyleSheet.absoluteFill}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* STEP 0 */}
-          {step === 0 && (
-            <View>
-              <View style={styles.heroIconContainer}>
-                <LinearGradient
-                  colors={['#FF6B6B', '#FF8E8E']}
-                  style={styles.heroCircle}
+        <SafeAreaView style={{ flex: 1 }}>
+          <ProgressBar />
+          <ScrollView
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* STEP 1: NAME & INCOME */}
+            {step === 1 && (
+              <View style={styles.stepContent}>
+                <Text style={styles.stepLabel}>Step 1 of 4</Text>
+                <Text style={styles.stepTitle}>
+                  Let's get started
+                </Text>
+
+                <View style={styles.glassCard}>
+                  <Text style={styles.inputLabel}>YOUR NAME</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Enter your name"
+                    placeholderTextColor="#4B5563"
+                    value={name}
+                    onChangeText={setName}
+                  />
+                </View>
+
+                <View
+                  style={[styles.glassCard, { marginTop: 20 }]}
                 >
-                  <Zap color="white" size={40} />
-                </LinearGradient>
-              </View>
-
-              <Text style={styles.heroTitle}>
-                Understand Your Spending. Smarter.
-              </Text>
-
-              <Text style={styles.heroSubtitle}>
-                Finexa securely analyzes your transactions (read-only) to
-                help you track expenses and build smart budgets.
-              </Text>
-
-              <TouchableOpacity
-                style={styles.mainButton}
-                onPress={() => setStep(1)}
-              >
-                <Text style={styles.mainButtonText}>
-                  I Agree & Continue
-                </Text>
-              </TouchableOpacity>
-
-              <Text style={styles.disclaimerTextSmall}>
-                We never modify or share your data.
-              </Text>
-            </View>
-          )}
-
-          {/* STEP 1 */}
-          {step === 1 && (
-            <View>
-              <Text style={styles.welcomeText}>
-                Let's set up your profile
-              </Text>
-
-              <View style={styles.card}>
-                <Text style={styles.question}>
-                  What should we call you?
-                </Text>
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Your name"
-                  placeholderTextColor="#777"
-                  value={name}
-                  onChangeText={setName}
-                  autoFocus
-                  returnKeyType="done"
-                />
-
-                <View style={{ marginTop: 40 }}>
-                  <Text style={styles.question}>
-                    What's your monthly income?
+                  <Text style={styles.inputLabel}>
+                    MONTHLY INCOME
                   </Text>
-
-                  <Text style={styles.incomeValue}>
-                    ₹ {income.toLocaleString()}
+                  <Text style={styles.incomeDisplay}>
+                    ₹{income.toLocaleString()}
                   </Text>
-
                   <Slider
+                    style={{ width: '100%', height: 40 }}
                     minimumValue={10000}
                     maximumValue={500000}
-                    step={1000}
+                    step={5000}
                     value={income}
-                    minimumTrackTintColor="#FF6B6B"
-                    thumbTintColor="#FF6B6B"
+                    minimumTrackTintColor="#34D399"
+                    maximumTrackTintColor="#1F2937"
+                    thumbTintColor="#FFF"
                     onValueChange={setIncome}
                     onSlidingComplete={() =>
                       Haptics.impactAsync(
-                        Haptics.ImpactFeedbackStyle.Light
+                        Haptics.ImpactFeedbackStyle.Light,
                       )
                     }
                   />
                 </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    !name.trim() && styles.buttonDisabled,
+                  ]}
+                  onPress={() => setStep(2)}
+                  disabled={!name.trim()}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    Continue
+                  </Text>
+                  <ChevronRight color="black" size={20} />
+                </TouchableOpacity>
               </View>
+            )}
 
-              <TouchableOpacity
-                style={[
-                  styles.mainButton,
-                  !name.trim() && styles.buttonDisabled,
-                ]}
-                disabled={!name.trim()}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setStep(2);
-                }}
-              >
-                <Text style={styles.mainButtonText}>Next</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+            {/* STEP 2: BUDGETING */}
+            {step === 2 && (
+              <View style={styles.stepContent}>
+                <TouchableOpacity
+                  style={styles.backLink}
+                  onPress={() => setStep(1)}
+                >
+                  <ArrowLeft
+                    color="#34D399"
+                    size={20}
+                  />
+                  <Text style={styles.backText}>Back</Text>
+                </TouchableOpacity>
 
-          {/* STEP 2 */}
-          {step === 2 && (
-            <View>
-              <Text style={styles.welcomeText}>Budgeting</Text>
-
-              <View style={styles.card}>
-                <Text style={styles.question}>
-                  Set a monthly spending limit
+                <Text style={styles.stepLabel}>Step 2 of 4</Text>
+                <Text style={styles.stepTitle}>
+                  Monthly Limit
                 </Text>
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.currencyPrefix}>₹</Text>
-                  <TextInput
-                    style={styles.spendingInput}
-                    keyboardType="numeric"
-                    placeholder={`Suggested: ₹${(
-                      income * 0.5
-                    ).toLocaleString()}`}
-                    placeholderTextColor="#555"
-                    value={spendingLimit}
-                    onChangeText={setSpendingLimit}
-                  />
+                <View style={styles.glassCard}>
+                  <Text style={styles.inputLabel}>
+                    SET YOUR BUDGET
+                  </Text>
+                  <View style={styles.currencyRow}>
+                    <Text style={styles.currencySymbol}>₹</Text>
+                    <TextInput
+                      style={styles.bigInput}
+                      keyboardType="numeric"
+                      placeholder={(income * 0.5).toString()}
+                      placeholderTextColor="#374151"
+                      value={spendingLimit}
+                      onChangeText={setSpendingLimit}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.magicLink}
+                    onPress={suggestLimit}
+                  >
+                    <Zap
+                      size={14}
+                      color="#34D399"
+                      fill="#34D399"
+                    />
+                    <Text style={styles.magicText}>
+                      Suggest 50% Rule
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
                 <TouchableOpacity
-                  style={styles.suggestButton}
-                  onPress={suggestLimit}
-                >
-                  <Text style={styles.suggestText}>
-                    Auto-calculate limit
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={() => setStep(1)}
-                >
-                  <Text style={{ color: '#aaa' }}>Back</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.finishButton}
+                  style={styles.primaryButton}
                   onPress={() => setStep(3)}
                 >
-                  <Text style={styles.mainButtonText}>Next</Text>
+                  <Text style={styles.primaryButtonText}>
+                    Continue
+                  </Text>
+                  <ChevronRight color="black" size={20} />
                 </TouchableOpacity>
               </View>
-            </View>
-          )}
+            )}
 
-          {/* STEP 3 */}
-          {step === 3 && (
-            <View>
-              <Text style={styles.welcomeText}>Final Step</Text>
+            {/* STEP 3: CATEGORIES */}
+            {step === 3 && (
+              <View style={styles.stepContent}>
+                <TouchableOpacity
+                  style={styles.backLink}
+                  onPress={() => setStep(2)}
+                >
+                  <ArrowLeft
+                    color="#34D399"
+                    size={20}
+                  />
+                  <Text style={styles.backText}>Back</Text>
+                </TouchableOpacity>
 
-              <View style={styles.card}>
-                <Text style={styles.question}>
-                  Which categories do you spend on most?
+                <Text style={styles.stepLabel}>Step 3 of 4</Text>
+                <Text style={styles.stepTitle}>
+                  Top Spending
                 </Text>
 
-                <View style={styles.categoryGrid}>
-                  {categories.map((cat) => (
+                <View style={styles.gridContainer}>
+                  {categories.map(cat => (
                     <TouchableOpacity
                       key={cat.id}
                       style={[
-                        styles.catBox,
-                        {
-                          borderColor: selectedCats.includes(cat.id)
-                            ? '#FF6B6B'
-                            : '#3D3D5C',
-                        },
+                        styles.categoryCard,
+                        selectedCats.includes(cat.id) &&
+                          styles.categoryCardActive,
                       ]}
                       onPress={() => toggleCategory(cat.id)}
                     >
-                      <Text style={{ fontSize: 24 }}>{cat.icon}</Text>
-                      <Text style={styles.catName}>{cat.name}</Text>
+                      <Text style={{ fontSize: 24 }}>
+                        {cat.icon}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.catLabel,
+                          selectedCats.includes(cat.id) &&
+                            styles.catLabelActive,
+                        ]}
+                      >
+                        {cat.name}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-              </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.mainButton,
-                  (selectedCats.length === 0 || loading) &&
-                    styles.buttonDisabled,
-                ]}
-                disabled={selectedCats.length === 0 || loading}
-                onPress={handleFinish}
-              >
-                <Text style={styles.mainButtonText}>
-                  {loading ? 'Finalizing...' : 'Finish'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </ScrollView>
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    selectedCats.length === 0 &&
+                      styles.buttonDisabled,
+                  ]}
+                  onPress={() => setStep(4)}
+                  disabled={selectedCats.length === 0}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    Continue
+                  </Text>
+                  <ChevronRight color="black" size={20} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* STEP 4: MASTER YOUR MONEY */}
+            {step === 4 && (
+              <View style={styles.stepContent}>
+                <TouchableOpacity
+                  style={styles.backLink}
+                  onPress={() => setStep(3)}
+                >
+                  <ArrowLeft
+                    color="#34D399"
+                    size={20}
+                  />
+                  <Text style={styles.backText}>Back</Text>
+                </TouchableOpacity>
+
+                <View style={styles.onboardingHeader}>
+                  <View style={styles.piggyBg}>
+                    <Text style={{ fontSize: 50 }}>🐷</Text>
+                  </View>
+                  <Text style={styles.masterTitle}>
+                    Master Your{' '}
+                    <Text style={{ color: '#34D399' }}>
+                      Money
+                    </Text>
+                  </Text>
+                  <Text style={styles.masterSubtitle}>
+                    We analyze your transactions to predict spending
+                    limits and categorize expenses automatically.
+                  </Text>
+                </View>
+
+                <View style={styles.howItWorks}>
+                  <Text style={styles.howLabel}>
+                    HOW IT WORKS
+                  </Text>
+
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIcon}>
+                      <MessageSquare
+                        size={20}
+                        color="#34D399"
+                      />
+                    </View>
+                    <View style={styles.infoText}>
+                      <Text style={styles.infoTitle}>
+                        SMS Parsing
+                      </Text>
+                      <Text style={styles.infoDesc}>
+                        We automatically categorize your expenses
+                        directly from transaction texts.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIcon}>
+                      <ShieldCheck
+                        size={20}
+                        color="#34D399"
+                      />
+                    </View>
+                    <View style={styles.infoText}>
+                      <Text style={styles.infoTitle}>
+                        Local Storage
+                      </Text>
+                      <Text style={styles.infoDesc}>
+                        Your financial data is processed on your
+                        device and never sent to a cloud server.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIcon}>
+                      <Target
+                        size={20}
+                        color="#34D399"
+                      />
+                    </View>
+                    <View style={styles.infoText}>
+                      <Text style={styles.infoTitle}>
+                        Smart Limits
+                      </Text>
+                      <Text style={styles.infoDesc}>
+                        Get predictions on your future spending
+                        habits based on history.
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.disclaimerCard}>
+                  <View style={styles.disclaimerHeader}>
+                    <AlertTriangle
+                      size={16}
+                      color="#FBBF24"
+                    />
+                    <Text style={styles.disclaimerLabel}>
+                      DISCLAIMER
+                    </Text>
+                  </View>
+                  <Text style={styles.disclaimerText}>
+                    This is a learning project, not financial
+                    advice. Always consult a professional for
+                    decisions.
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={handleFinish}
+                  disabled={loading}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {loading
+                      ? 'Finalizing...'
+                      : 'I Accept & Continue'}
+                  </Text>
+                  {!loading && (
+                    <ChevronRight
+                      color="black"
+                      size={20}
+                    />
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
-// =======================
-// STYLES
-// =======================
 const styles = StyleSheet.create({
-  container: { padding: 25, paddingTop: 60, paddingBottom: 50 },
-  heroIconContainer: { alignItems: 'center', marginBottom: 20 },
-  heroCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  heroTitle: {
-    color: 'white',
-    fontSize: 26,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  heroSubtitle: {
-    color: '#aaa',
-    fontSize: 15,
-    textAlign: 'center',
+  mainWrapper: { flex: 1 },
+  container: { paddingHorizontal: 24, paddingBottom: 40 },
+  progressContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 24,
     marginVertical: 20,
   },
-  disclaimerTextSmall: {
-    color: '#666',
+  progressStep: { flex: 1, height: 4, borderRadius: 2 },
+  progressStepActive: { backgroundColor: '#34D399' },
+  progressStepInactive: { backgroundColor: '#1F2937' },
+
+  stepContent: { flex: 1 },
+  stepLabel: {
+    color: '#34D399',
+    fontWeight: 'bold',
+    fontSize: 13,
+    textTransform: 'uppercase',
+  },
+  stepTitle: {
+    color: '#FFF',
+    fontSize: 32,
+    fontWeight: '800',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+
+  glassCard: {
+    backgroundColor: '#16181D',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
+  },
+  inputLabel: {
+    color: '#9CA3AF',
     fontSize: 11,
-    textAlign: 'center',
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 8,
   },
-  welcomeText: {
-    color: 'white',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 25,
-  },
-  card: {
-    backgroundColor: '#2D2D44',
-    borderRadius: 28,
-    padding: 25,
-  },
-  question: {
-    color: 'white',
-    fontSize: 18,
+  textInput: {
+    color: '#FFF',
+    fontSize: 24,
     fontWeight: '600',
-    marginBottom: 15,
   },
-  input: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#444',
-    color: 'white',
-    fontSize: 20,
+  incomeDisplay: {
+    color: '#FFF',
+    fontSize: 36,
+    fontWeight: '800',
+    marginVertical: 10,
   },
-  incomeValue: {
-    color: '#FF6B6B',
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  inputContainer: {
+
+  currencyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E2C',
-    borderRadius: 15,
-    paddingHorizontal: 15,
-    marginTop: 10,
   },
-  currencyPrefix: { color: 'white', fontSize: 20, marginRight: 10 },
-  spendingInput: {
+  currencySymbol: {
+    color: '#34D399',
+    fontSize: 32,
+    fontWeight: '800',
+    marginRight: 10,
+  },
+  bigInput: {
+    color: '#FFF',
+    fontSize: 36,
+    fontWeight: '800',
     flex: 1,
-    color: 'white',
-    fontSize: 20,
-    paddingVertical: 15,
   },
-  suggestButton: {
+  magicLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 15,
-    padding: 15,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,107,107,0.3)',
+    gap: 6,
   },
-  suggestText: {
-    color: '#FF6B6B',
-    textAlign: 'center',
-    fontWeight: 'bold',
+  magicText: {
+    color: '#34D399',
+    fontWeight: '700',
+    fontSize: 14,
   },
-  categoryGrid: {
+
+  gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 10,
+    gap: 12,
   },
-  catBox: {
-    width: '47%',
-    padding: 15,
-    borderRadius: 18,
-    borderWidth: 2,
-    alignItems: 'center',
-    marginBottom: 12,
-    backgroundColor: '#1E1E2C',
-  },
-  catName: { color: 'white', marginTop: 5 },
-  mainButton: {
-    backgroundColor: '#FF6B6B',
+  categoryCard: {
+    width: (width - 64) / 2,
+    backgroundColor: '#16181D',
+    borderRadius: 20,
     padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1F2937',
+  },
+  categoryCardActive: {
+    borderColor: '#34D399',
+    backgroundColor: 'rgba(52, 211, 153, 0.05)',
+  },
+  catLabel: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  catLabelActive: { color: '#FFF' },
+
+  onboardingHeader: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  piggyBg: {
+    width: 100,
+    height: 100,
     borderRadius: 20,
-    marginTop: 20,
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  masterTitle: {
+    color: '#FFF',
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  masterSubtitle: {
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontSize: 14,
+    marginTop: 10,
+    lineHeight: 20,
+  },
+
+  howItWorks: { marginVertical: 10 },
+  howLabel: {
+    color: '#4B5563',
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 15,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 20,
+  },
+  infoIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(52, 211, 153, 0.05)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  mainButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+  infoText: { flex: 1 },
+  infoTitle: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  buttonRow: { flexDirection: 'row', marginTop: 20 },
-  backButton: { flex: 1, alignItems: 'center' },
-  finishButton: {
-    flex: 2,
-    backgroundColor: '#FF6B6B',
-    borderRadius: 20,
+  infoDesc: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    marginTop: 2,
+  },
+
+  disclaimerCard: {
+    backgroundColor: 'rgba(251, 191, 36, 0.05)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.2)',
+    marginBottom: 20,
+  },
+  disclaimerHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 18,
+    gap: 8,
+    marginBottom: 6,
   },
-  buttonDisabled: { opacity: 0.5 },
+  disclaimerLabel: {
+    color: '#FBBF24',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  disclaimerText: {
+    color: '#FBBF24',
+    fontSize: 12,
+    lineHeight: 18,
+    opacity: 0.8,
+  },
+
+  primaryButton: {
+    backgroundColor: '#34D399',
+    height: 60,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  primaryButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  buttonDisabled: { opacity: 0.3 },
+  backLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 15,
+  },
+  backText: {
+    color: '#34D399',
+    fontWeight: '600',
+  },
 });
