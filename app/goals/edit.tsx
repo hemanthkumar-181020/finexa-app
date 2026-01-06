@@ -339,12 +339,13 @@ export default function EditGoalScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0D0D0D",
+    backgroundColor: "#000000",
   },
+
+  /* HEADER */
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -352,19 +353,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#1A1C1A",
+    borderBottomColor: "#1E293B",
+    backgroundColor: "#000000",
   },
   backButton: {
     padding: 4,
   },
   headerTitle: {
-    color: "#E2E8F0",
-    fontSize: 18,
-    fontWeight: "600",
+    color: "#F9FAFB",
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   placeholder: {
     width: 32,
   },
+
   keyboardAvoid: {
     flex: 1,
   },
@@ -372,53 +376,59 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
+
+  /* GREETING */
   greetingContainer: {
     marginTop: 20,
     marginBottom: 30,
   },
   greetingText: {
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: "800",
     marginBottom: 4,
   },
   subGreeting: {
-    color: "#666",
-    fontSize: 16,
+    color: "#9CA3AF",
+    fontSize: 15,
   },
+
+  /* CATEGORY CARD */
   categoryCard: {
-    backgroundColor: "#1A1C1A",
-    borderRadius: 20,
+    backgroundColor: "#000000",
+    borderRadius: 22,
     padding: 20,
     alignItems: "center",
     marginBottom: 30,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
   },
   categoryIconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 16,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
   },
   categoryName: {
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 20,
-    fontWeight: "600",
+    fontWeight: "700",
     textAlign: "center",
   },
+
+  /* INPUT CARD */
   inputContainer: {
-    backgroundColor: "#1A1C1A",
-    borderRadius: 20,
+    backgroundColor: "#000000",
+    borderRadius: 22,
     padding: 24,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
   },
   inputLabel: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 14,
     marginBottom: 16,
     fontWeight: "500",
@@ -427,28 +437,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 2,
-    borderBottomColor: "#4ADE80",
+    borderBottomColor: "#10b981",
     paddingBottom: 12,
     marginBottom: 24,
   },
   currencySymbol: {
-    color: "#E2E8F0",
-    fontSize: 36,
-    fontWeight: "bold",
+    color: "#F9FAFB",
+    fontSize: 32,
+    fontWeight: "800",
     marginRight: 8,
   },
   amountInput: {
     flex: 1,
-    color: "#E2E8F0",
-    fontSize: 36,
-    fontWeight: "bold",
+    color: "#F9FAFB",
+    fontSize: 32,
+    fontWeight: "800",
     padding: 0,
   },
+
+  /* QUICK SELECT */
   quickSelectContainer: {
     marginTop: 8,
   },
   quickSelectLabel: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 14,
     marginBottom: 12,
   },
@@ -458,38 +470,44 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   quickSelectButton: {
-    backgroundColor: "#2D2F2D",
+    backgroundColor: "#000000",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
     minWidth: 80,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#1E293B",
   },
   quickSelectText: {
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 14,
     fontWeight: "500",
   },
+
+  /* INFO CARD */
   infoCard: {
-    backgroundColor: "#1A2C1A",
-    borderRadius: 16,
+    backgroundColor: "#00110b",
+    borderRadius: 18,
     padding: 16,
     flexDirection: "row",
     alignItems: "flex-start",
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "#2D3E2D",
+    borderColor: "#064E3B",
   },
   infoText: {
-    color: "#A7F3A0",
+    color: "#BBF7D0",
     fontSize: 14,
     marginLeft: 12,
     flex: 1,
     lineHeight: 20,
   },
+
+  /* SAVE BUTTON */
   saveButton: {
-    backgroundColor: "#4ADE80",
-    borderRadius: 16,
+    backgroundColor: "#10b981",
+    borderRadius: 18,
     padding: 18,
     flexDirection: "row",
     justifyContent: "center",
@@ -497,14 +515,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   saveButtonDisabled: {
-    backgroundColor: "#2D2F2D",
+    backgroundColor: "#1F2937",
   },
   saveButtonText: {
-    color: "#0D0D0D",
+    color: "#020817",
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
     marginLeft: 8,
   },
+
+  /* RESET */
   resetButton: {
     padding: 16,
     alignItems: "center",

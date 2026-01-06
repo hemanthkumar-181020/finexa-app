@@ -780,18 +780,23 @@ export default function GoalsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0D0D0D",
+    backgroundColor: "#000000ff",
   },
+
+  /* LOADING */
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#020817",
   },
   loadingText: {
-    color: "#666",
+    color: "#64748B",
     marginTop: 12,
     fontSize: 16,
   },
+
+  /* HEADER */
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -799,26 +804,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#1A1C1A",
+    borderBottomColor: "#1E293B",
+    backgroundColor: "#020817",
   },
   backButton: {
     padding: 4,
   },
   headerTitle: {
-    color: "#E2E8F0",
-    fontSize: 18,
-    fontWeight: "600",
+    color: "#F9FAFB",
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   placeholder: {
     width: 32,
   },
+
+  /* INCOME CARD */
   incomeCard: {
-    backgroundColor: "#1A1C1A",
-    margin: 16,
+    backgroundColor: "#020817",
+    marginHorizontal: 16,
+    marginTop: 16,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
   },
   incomeHeader: {
     flexDirection: "row",
@@ -826,35 +836,42 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   incomeTitle: {
-    color: "#E2E8F0",
+    color: "#E5E7EB",
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 12,
     flex: 1,
   },
   incomeAmount: {
-    color: "#4ADE80",
-    fontSize: 32,
-    fontWeight: "bold",
+    color: "#22C55E",
+    fontSize: 30,
+    fontWeight: "800",
     marginBottom: 8,
   },
   incomeSubtitle: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 12,
   },
+
+  /* MONTHLY SUMMARY */
   summaryCard: {
-    backgroundColor: "#1A1C1A",
+    backgroundColor: "#020817",
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginTop: 12,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
+  },
+  sectionTitle: {
+    color: "#F9FAFB",
+    fontSize: 18,
+    fontWeight: "700",
   },
   summaryStats: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 12,
+    marginTop: 14,
   },
   summaryStat: {
     flex: 1,
@@ -866,49 +883,54 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   summaryStatLabel: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 11,
     marginLeft: 4,
   },
   summaryStatValue: {
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
+
+  /* BUDGET OVERVIEW */
   budgetOverviewCard: {
-    backgroundColor: "#1A1C1A",
+    backgroundColor: "#020817",
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginTop: 12,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
   },
   budgetStatsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 18,
   },
   budgetStat: {
     alignItems: "center",
+    flex: 1,
   },
   budgetStatLabel: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 12,
     marginBottom: 4,
   },
   budgetStatValue: {
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2D2F2D",
+    backgroundColor: "#020817",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#1E293B",
   },
   statusDot: {
     width: 6,
@@ -920,21 +942,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+
   budgetProgressContainer: {
-    marginTop: 16,
+    marginTop: 10,
   },
   progressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   progressLabel: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 12,
   },
   progressPercentage: {
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -942,33 +965,28 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   progressFooterText: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 12,
     textAlign: "center",
   },
+
+  /* GOALS SECTION */
   goalsSection: {
-    backgroundColor: "#1A1C1A",
+    backgroundColor: "#000000ff",
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginTop: 16,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    color: "#E2E8F0",
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
-    flex: 1,
+    marginBottom: 16,
   },
   goalsCount: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 12,
   },
   emptyGoals: {
@@ -976,37 +994,38 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyText: {
-    color: "#666",
+    color: "#F9FAFB",
     fontSize: 16,
     marginTop: 12,
   },
   emptySubtext: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 12,
     marginTop: 4,
     textAlign: "center",
   },
+
   goalItem: {
-    backgroundColor: "#141414",
+    backgroundColor: "#020817",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
   },
   overBudgetItem: {
-    backgroundColor: "#2A1A1A",
+    backgroundColor: "#111827",
     borderColor: "#FB7185",
   },
   goalItemHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   categoryIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -1015,19 +1034,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   goalCategory: {
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 2,
   },
   goalAmounts: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 12,
   },
   goalProgress: {
     flexDirection: "row",
     alignItems: "center",
   },
+
   overBudgetWarning: {
     flexDirection: "row",
     alignItems: "center",
@@ -1041,26 +1061,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginLeft: 6,
   },
+
+  /* DEBUG CHIP */
   debugContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1A1C1A",
-    borderRadius: 12,
+    backgroundColor: "#020817",
+    borderRadius: 16,
     padding: 12,
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#1E293B",
   },
   debugText: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 12,
     marginLeft: 8,
     flex: 1,
   },
+
+  /* QUICK ACTIONS */
   quickActions: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginHorizontal: 16,
-    marginBottom: 30,
+    marginTop: 16,
+    marginBottom: 28,
     gap: 12,
   },
   quickActionButton: {
@@ -1068,48 +1095,51 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1A1C1A",
+    backgroundColor: "#020817",
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
   },
   quickActionText: {
-    color: "#4ADE80",
-    fontSize: 12,
+    color: "#10b981",
+    fontSize: 13,
     fontWeight: "600",
     marginLeft: 8,
   },
+
+  /* MODALS */
+  
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#1A1C1A",
+    backgroundColor: "#000000ff",
     width: "85%",
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
   },
   modalTitle: {
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: "700",
     marginBottom: 20,
     textAlign: "center",
   },
   modalInput: {
-    backgroundColor: "#141414",
-    color: "#E2E8F0",
+    backgroundColor: "#020817",
+    color: "#F9FAFB",
     fontSize: 18,
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1E293B",
     marginBottom: 16,
   },
   quickAmounts: {
@@ -1119,13 +1149,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   quickAmountButton: {
-    backgroundColor: "#2D2F2D",
-    paddingHorizontal: 16,
+    backgroundColor: "#020817",
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#1E293B",
   },
   quickAmountText: {
-    color: "#E2E8F0",
+    color: "#E5E7EB",
     fontSize: 14,
   },
   modalButtons: {
@@ -1134,24 +1166,26 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
     alignItems: "center",
   },
   cancelButton: {
-    backgroundColor: "#2D2F2D",
+    backgroundColor: "#020817",
+    borderWidth: 1,
+    borderColor: "#1E293B",
   },
   saveButton: {
-    backgroundColor: "#4ADE80",
+    backgroundColor: "#10b981",
   },
   cancelButtonText: {
-    color: "#E2E8F0",
+    color: "#E5E7EB",
     fontSize: 16,
     fontWeight: "600",
   },
   saveButtonText: {
-    color: "#0D0D0D",
+    color: "#020817",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 });
