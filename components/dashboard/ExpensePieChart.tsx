@@ -1356,7 +1356,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { CATEGORY_DESCRIPTIONS, ALL_CATEGORIES } from '../../utils/categories';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+
 
 type Props = {
   transactions: Transaction[];
@@ -1422,6 +1424,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Bills": "document-text-outline",
   "Other Expense": "ellipsis-horizontal-circle-outline",
 };
+
 
 const getCategoryIcon = (category: string) => {
   return CATEGORY_ICONS[category] || CATEGORY_ICONS["Other Expense"];
@@ -1519,54 +1522,87 @@ const exportToCSV = (data: any[], timeFilter: TimeFilter, selectedYear?: number,
 };
 
 // Replace the saveAndShareCSV function with this:
+// const saveAndShareCSV = async (csvContent: string, fileName: string) => {
+//   try {
+//     // For web platform
+//     if (Platform.OS === 'web') {
+//       // Create a downloadable link for web
+//       const blob = new Blob([csvContent], { type: 'text/csv' });
+//       const url = window.URL.createObjectURL(blob);
+//       const link = document.createElement('a');
+//       link.href = url;
+//       link.download = fileName;
+//       document.body.appendChild(link);
+//       link.click();
+//       document.body.removeChild(link);
+//       window.URL.revokeObjectURL(url);
+      
+//       Alert.alert('Success', `CSV exported successfully: ${fileName}`);
+//       return true;
+//     }
+    
+//     // For mobile platforms (iOS/Android)
+//     // First, let's create the CSV content as a string and share it directly
+//     // This approach doesn't require FileSystem
+    
+//     // Create a temporary file path
+//     const timestamp = new Date().getTime();
+//     const tempFileName = `${timestamp}_${fileName}`;
+    
+//     // For iOS/Android, we can use Share API directly with a message
+//     // Or we can create a temporary file URI
+    
+//     // Option 1: Share as text content (simpler)
+//     const shareResult = await Share.share({
+//       message: csvContent,
+//       title: 'Export Expense Report',
+//     });
+    
+//     // Option 2: If you want to save to file system (more complex)
+//     // We'll skip FileSystem for now to avoid the import issues
+    
+//     Alert.alert('Success', 'CSV data ready to share or save');
+//     return true;
+    
+//   } catch (error) {
+//     console.error('Error saving/sharing CSV:', error);
+//     Alert.alert('Error', 'Failed to export CSV file');
+//     return false;
+//   }
+// };
+
+
 const saveAndShareCSV = async (csvContent: string, fileName: string) => {
   try {
-    // For web platform
-    if (Platform.OS === 'web') {
-      // Create a downloadable link for web
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      Alert.alert('Success', `CSV exported successfully: ${fileName}`);
-      return true;
+    const fileUri = FileSystem.cacheDirectory + fileName;
+
+    await FileSystem.writeAsStringAsync(fileUri, csvContent);
+
+    if (!(await Sharing.isAvailableAsync())) {
+      Alert.alert('Error', 'Sharing is not available on this device');
+      return false;
     }
-    
-    // For mobile platforms (iOS/Android)
-    // First, let's create the CSV content as a string and share it directly
-    // This approach doesn't require FileSystem
-    
-    // Create a temporary file path
-    const timestamp = new Date().getTime();
-    const tempFileName = `${timestamp}_${fileName}`;
-    
-    // For iOS/Android, we can use Share API directly with a message
-    // Or we can create a temporary file URI
-    
-    // Option 1: Share as text content (simpler)
-    const shareResult = await Share.share({
-      message: csvContent,
-      title: 'Export Expense Report',
+
+    await Sharing.shareAsync(fileUri, {
+      mimeType: 'text/csv',
+      dialogTitle: 'Export Expense Report',
+      UTI: 'public.comma-separated-values-text',
     });
-    
-    // Option 2: If you want to save to file system (more complex)
-    // We'll skip FileSystem for now to avoid the import issues
-    
-    Alert.alert('Success', 'CSV data ready to share or save');
+
     return true;
-    
   } catch (error) {
-    console.error('Error saving/sharing CSV:', error);
-    Alert.alert('Error', 'Failed to export CSV file');
+    console.error('CSV Export Error:', error);
+    Alert.alert('Error', 'Failed to export CSV');
     return false;
   }
 };
+
+
+
+
+
+
+
 
 export function ExpensePieChart({ transactions }: Props) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -1806,17 +1842,17 @@ export function ExpensePieChart({ transactions }: Props) {
 
   const activeSegment = activeIndex !== null ? segments[activeIndex] : null;
 
-  if (!groupedData.length) {
-    return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyIcon}>
-          <Ionicons name="pie-chart-outline" size={48} color="#5DADE2" />
-        </View>
-        <Text style={styles.emptyTitle}>No Expenses Yet</Text>
-        <Text style={styles.emptyText}>Add some transactions to see your spending breakdown</Text>
-      </View>
-    );
-  }
+  // if (!groupedData.length) {
+  //   return (
+  //     <View style={styles.emptyContainer}>
+  //       <View style={styles.emptyIcon}>
+  //         <Ionicons name="pie-chart-outline" size={48} color="#5DADE2" />
+  //       </View>
+  //       <Text style={styles.emptyTitle}>No Expenses Yet</Text>
+  //       <Text style={styles.emptyText}>Add some transactions to see your spending breakdown</Text>
+  //     </View>
+  //   );
+  // }
 
   return (
     <View style={styles.screenContainer}>
@@ -1921,7 +1957,17 @@ export function ExpensePieChart({ transactions }: Props) {
             </View>
 
             <View style={styles.chartSection}>
-              <View style={styles.chartWrapper}>
+              {groupedData.length === 0 ? (
+                <View style={styles.emptyChartState}>
+                  <Ionicons name="calendar-outline" size={40} color="#5DADE2" />
+                  <Text style={styles.emptyChartTitle}>No transactions</Text>
+                  <Text style={styles.emptyChartSub}>
+                    No expenses found for {getTimeFilterLabel()}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.chartWrapper}>
                 <Svg width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`}>
                   <G>
                     {segments.map((segment) => (
@@ -1998,7 +2044,10 @@ export function ExpensePieChart({ transactions }: Props) {
                   </View>
                 </View>
               )}
+                </>
+              )}
             </View>
+
 
             <View style={styles.legendSection}>
               <View style={styles.legendHeader}>
@@ -3028,4 +3077,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E1E1E',
   },
-});
+  emptyChartState: {
+  height: CHART_SIZE,
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#1E1E1E',
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: '#2D2D2D',
+},
+
+emptyChartTitle: {
+  color: '#E0E0E0',
+  fontSize: 16,
+  fontWeight: '600',
+  marginTop: 8,
+},
+
+emptyChartSub: {
+  color: '#9CA3AF',
+  fontSize: 13,
+  marginTop: 4,
+},
+
+})

@@ -47,6 +47,96 @@ const resolveTxDate = (tx: Transaction): Date | null => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+const normalizeCategory = (category?: string) =>
+  (category || 'Other Expense').trim();
+
+const CATEGORY_ICONS: Record<string,  keyof typeof Ionicons.glyphMap
+> = {
+  "Recharge": "phone-portrait-outline",
+  "Food & Dining": "fast-food-outline",
+  "Fuel": "car-outline",
+  "Shopping": "bag-handle-outline",
+  "Groceries": "cart-outline",
+  "Travel": "airplane-outline",
+  "Entertainment": "film-outline",
+  "Utilities": "flash-outline",
+  "Education": "book-outline",
+  "Healthcare": "medkit-outline",
+  "Banking & Finance": "cash-outline",
+  "Transfer Out": "arrow-up-circle-outline",
+  "Income / Transfer In": "arrow-down-circle-outline",
+  "Personal Care": "person-outline",
+  "Home & Kitchen": "home-outline",
+  "Gifts & Donations": "gift-outline",
+  "Business Expenses": "briefcase-outline",
+  "Hobbies & Leisure": "game-controller-outline",
+  "Vehicle Maintenance": "car-sport-outline",
+  "Child & Family": "people-outline",
+  "Technology & Software": "hardware-chip-outline",
+  "Transport": "bus-outline",
+  "Bills": "document-text-outline",
+  "Other Expense": "ellipsis-horizontal-circle-outline",
+};
+export const CATEGORY_COLORS = {
+  FOOD: "#63C6AF",        // Mint Green
+  TRANSPORT: "#5A7FBF",   // Blue
+  SHOPPING: "#AA7F6F",    // Terra Cotta
+  HEALTH: "#5AA06F",      // Sage Green
+  FINANCE: "#6E4A9C",     // Purple
+  HOME: "#5A8F6F",        // Forest Green
+  ENTERTAINMENT: "#8F6FBF", // Lavender
+  EDUCATION: "#7A8FBF",   // Periwinkle
+  TECH: "#9C6FAA",        // Orchid
+  UTILITIES: "#3FA0AA",   // Teal
+  FAMILY: "#BF8F6F",      // Camel
+  INCOME: "#5FBF8F",      // Seafoam
+  OTHER: "#9CA3AF",       // Neutral gray
+};
+export const CATEGORY_ICON_COLORS: Record<string, string> = {
+  // Income & Finance
+  "Income / Transfer In": CATEGORY_COLORS.INCOME,
+  "Transfer Out": CATEGORY_COLORS.FINANCE,
+  "Banking & Finance": CATEGORY_COLORS.FINANCE,
+
+  // Food
+  "Food & Dining": CATEGORY_COLORS.FOOD,
+  "Groceries": CATEGORY_COLORS.FOOD,
+
+  // Transport
+  "Fuel": CATEGORY_COLORS.TRANSPORT,
+  "Transport": CATEGORY_COLORS.TRANSPORT,
+  "Travel": CATEGORY_COLORS.TRANSPORT,
+  "Vehicle Maintenance": CATEGORY_COLORS.TRANSPORT,
+
+  // Shopping & Lifestyle
+  "Shopping": CATEGORY_COLORS.SHOPPING,
+  "Personal Care": CATEGORY_COLORS.SHOPPING,
+  "Hobbies & Leisure": CATEGORY_COLORS.ENTERTAINMENT,
+
+  // Home & Utilities
+  "Home & Kitchen": CATEGORY_COLORS.HOME,
+  "Utilities": CATEGORY_COLORS.UTILITIES,
+  "Bills": CATEGORY_COLORS.UTILITIES,
+
+  // Health & Education
+  "Healthcare": CATEGORY_COLORS.HEALTH,
+  "Education": CATEGORY_COLORS.EDUCATION,
+
+  // Family & Social
+  "Child & Family": CATEGORY_COLORS.FAMILY,
+  "Gifts & Donations": CATEGORY_COLORS.FAMILY,
+
+  // Tech & Work
+  "Business Expenses": CATEGORY_COLORS.FINANCE,
+  "Technology & Software": CATEGORY_COLORS.TECH,
+
+  // Entertainment
+  "Entertainment": CATEGORY_COLORS.ENTERTAINMENT,
+
+  // Fallback
+  "Other Expense": CATEGORY_COLORS.OTHER,
+};
+
 export default function HeatmapScreen() {
   const router = useRouter();
   const today = new Date();
@@ -320,7 +410,7 @@ export default function HeatmapScreen() {
         </View>
 
         {/* Weekly Trend Chart Component */}
-        {weeklyTrendData.length > 0 && maxWeeklySpend > 0 && (
+        {/* {weeklyTrendData.length > 0 && maxWeeklySpend > 0 && (
           <View style={styles.trendCard}>
             <View style={styles.trendHeader}>
               <Text style={styles.trendTitle}>Weekly Trend</Text>
@@ -331,7 +421,7 @@ export default function HeatmapScreen() {
 
             <View style={styles.chartArea}>
               {/* Dashed target line */}
-              {dailyLimit > 0 && (
+              {/* {dailyLimit > 0 && (
                 <View
                   style={[
                     styles.limitLine,
@@ -346,7 +436,7 @@ export default function HeatmapScreen() {
               )}
 
               {/* Bars */}
-              <View style={styles.chartRow}>
+              {/* <View style={styles.chartRow}>
                 {weeklyTrendData.map((item, idx) => {
                   const barHeight = Math.max(
                     (item.amount / maxWeeklySpend) * 120,
@@ -384,7 +474,7 @@ export default function HeatmapScreen() {
               </View>
             </View>
           </View>
-        )}
+        )} */}
 
         {/* Heatmap */}
         <View style={styles.heatmapContainer}>
@@ -466,9 +556,19 @@ export default function HeatmapScreen() {
             </View>
 
             {selectedDayTxs.map(item => (
+              
               <View key={item.id} style={styles.txItem}>
-                <View style={styles.iconCircle}>
-                  <Ionicons name="cart-outline" size={20} color="#FFF" />
+                <View
+                  style={[
+                    styles.iconCircle,
+                    {
+                      backgroundColor:
+                        (CATEGORY_ICON_COLORS[item.category] ?? CATEGORY_COLORS.OTHER) + '20',
+                    },
+                  ]}
+                >
+                  
+                  <Ionicons name ={CATEGORY_ICONS[item.category] || CATEGORY_ICONS["Other Expense"]} size={20} color={CATEGORY_ICON_COLORS[item.category] ?? CATEGORY_COLORS.OTHER} />
                 </View>
                 <View style={styles.txInfo}>
                   <Text style={styles.txCategory}>{item.category}</Text>
@@ -501,8 +601,23 @@ export default function HeatmapScreen() {
             }
             renderItem={({ item }) => (
               <View style={styles.txItem}>
-                <View style={styles.iconCircle}>
-                  <Ionicons name="cart-outline" size={20} color="#FFF" />
+                <View
+                  style={[
+                    styles.iconCircle,
+                    {
+                      backgroundColor:
+                        (CATEGORY_ICON_COLORS[item.category] ?? CATEGORY_COLORS.OTHER) + '20',
+                    },
+                  ]}
+                >
+                const categoryKey = normalizeCategory(item.category);
+
+                <Ionicons
+                  name={CATEGORY_ICONS[item.category] ?? CATEGORY_ICONS['Other Expense']}
+                  size={20}
+                  color={CATEGORY_ICON_COLORS[item.category] ?? CATEGORY_COLORS.OTHER}
+                />
+
                 </View>
                 <View style={styles.txInfo}>
                   <Text style={styles.txCategory}>{item.category}</Text>

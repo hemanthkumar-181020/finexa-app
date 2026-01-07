@@ -1,8 +1,12 @@
 import { Tabs, Redirect } from "expo-router";
 import { Ionicons,Octicons,MaterialIcons} from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, View, Image, StyleSheet } from "react-native";
+import { ActivityIndicator, View, Image, StyleSheet, AppState, Platform } from "react-native";
 import { useAuth } from "../../services/AuthContext";
+import * as NavigationBar from "expo-navigation-bar";
+
+NavigationBar.setBehaviorAsync("overlay-swipe");
+NavigationBar.setVisibilityAsync("hidden");
 
 const brandLogos = [
   require("../../assets/images/phonepe.png"),
@@ -28,10 +32,40 @@ function RotatingBrandIcon() {
 }
 
 export default function TabsLayout() {
+  
+
   const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const hideNavBar = async () => {
+      try {
+        await NavigationBar.setBehaviorAsync("overlay-swipe");
+        await NavigationBar.setVisibilityAsync("hidden");
+      } catch (e) {
+        console.log("NavigationBar error:", e);
+      }
+    };
+
+    // Initial hide
+    hideNavBar();
+
+    // Re-hide when coming from recent apps
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        hideNavBar();
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+
 
   if (loading) {
     return (
+
       <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color="#22C55E" />
       </View>
@@ -47,7 +81,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#fffdfdff",
+          backgroundColor: "#0D0D0D",
           borderTopColor: "#0f0f10ff",
           height: 64,
         },
@@ -139,4 +173,5 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     resizeMode: "contain",
   },
+  
 });
