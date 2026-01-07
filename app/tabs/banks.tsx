@@ -6,7 +6,8 @@ import { useTheme } from "../../context/ThemeContext";
 export default function Banks() {
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Choose Bank</Text>
+      
+      <Text style={styles.heading}>Choose your Source</Text>
 
       {/* PhonePe */}
       <Pressable
@@ -78,20 +79,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   heading: {
-    color: "#00E676",
+    color: "#cacbcbff",
     fontSize: 28,
     fontWeight: "700",
     textAlign: "center",
     marginBottom: 32,
   },
   card: {
-    backgroundColor: "#0E0E0E",
+    backgroundColor: "#020817",
     borderRadius: 20,
     paddingVertical: 18,
     paddingHorizontal: 20,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#00E676",
+    borderColor: "#3f8563ff",
   },
   row: {
     flexDirection: "row",
@@ -116,7 +117,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: "#00E676",
+    color: "#e6e6e6ff",
     fontSize: 20,
     fontWeight: "700",
   },

@@ -1,3 +1,4 @@
+// app/tabs/transactions.tsx (FUNCTIONALITY FIXED)
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   View,
@@ -17,14 +18,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as DocumentPicker from "expo-document-picker";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 
 import { useTransactions } from "../../context/TransactionContext";
 import { importBankStatement } from "../../services/bankImport";
-import { 
+import {
   fetchTransactionsFromFirestore,
-  deleteTransactionFromFirestore 
+  deleteTransactionFromFirestore,
 } from "../../services/firestoreTransactions";
 import { useAuth } from "../../services/AuthContext";
 import type { Transaction } from "../../types/transaction";
@@ -54,8 +55,6 @@ const TRANSACTION_TYPES = [
 
 const CATEGORIES = [
   "Income / Transfer In",
-
-  // Core Expenses
   "Recharge",
   "Food & Dining",
   "Fuel",
@@ -68,8 +67,6 @@ const CATEGORIES = [
   "Healthcare",
   "Banking & Finance",
   "Transfer Out",
-
-  // Extended Coverage
   "Personal Care",
   "Home & Kitchen",
   "Gifts & Donations",
@@ -78,8 +75,6 @@ const CATEGORIES = [
   "Vehicle Maintenance",
   "Child & Family",
   "Technology & Software",
-
-  // Fallback
   "Other Expense",
 ];
 
@@ -123,20 +118,22 @@ export default function TransactionsScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
-  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
-  const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
+  const [transactionToEdit, setTransactionToEdit] =
+    useState<Transaction | null>(null);
+  const [expandedTransactionId, setExpandedTransactionId] = useState<
+    string | null
+  >(null);
 
-  // Load transactions on initial mount
+  const currentYear = new Date().getFullYear();
+
   useEffect(() => {
     if (!authLoading && user) {
       loadTransactions();
     }
   }, [authLoading, user]);
 
-  // Refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log("🔄 TransactionsScreen focused, refreshing data...");
       if (user && !loading) {
         refreshData();
       }
@@ -149,10 +146,13 @@ export default function TransactionsScreen() {
     setLoading(true);
     try {
       const txns = await fetchTransactionsFromFirestore(user.uid);
-      dispatch({ type: "SET_TRANSACTIONS", payload: txns });
-      console.log(`✅ Loaded ${txns.length} transactions`);
+      if (txns) {
+        dispatch({ type: "SET_TRANSACTIONS", payload: txns });
+      } else {
+        console.warn("No transactions returned from Firestore");
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Load transactions error:", err);
       Alert.alert("Error", "Failed to load transactions");
     } finally {
       setLoading(false);
@@ -161,14 +161,16 @@ export default function TransactionsScreen() {
 
   const refreshData = async () => {
     if (!user) return;
-    
+
     setRefreshing(true);
     try {
       const txns = await fetchTransactionsFromFirestore(user.uid);
-      dispatch({ type: "SET_TRANSACTIONS", payload: txns });
-      console.log(`🔄 Refreshed ${txns.length} transactions`);
+      if (txns) {
+        dispatch({ type: "SET_TRANSACTIONS", payload: txns });
+      }
     } catch (err) {
       console.error("Refresh error:", err);
+      Alert.alert("Error", "Failed to refresh transactions");
     } finally {
       setRefreshing(false);
     }
@@ -198,13 +200,19 @@ export default function TransactionsScreen() {
       const count = await importBankStatement(file, user.uid);
 
       Alert.alert("Success", `Imported ${count} transactions successfully!`, [
-        { text: "OK", onPress: () => {
-          loadTransactions(); // Refresh after import
-        } },
+        {
+          text: "OK",
+          onPress: () => {
+            loadTransactions();
+          },
+        },
       ]);
     } catch (err: any) {
       console.error("Upload error:", err);
-      Alert.alert("Error", err.message || "Failed to import bank statement");
+      Alert.alert(
+        "Error",
+        err.message || "Failed to import bank statement"
+      );
     } finally {
       setUploading(false);
     }
@@ -214,9 +222,9 @@ export default function TransactionsScreen() {
     setTransactionToEdit(transaction);
     router.push({
       pathname: "/update",
-      params: { 
-        transaction: JSON.stringify(transaction)
-      }
+      params: {
+        transaction: JSON.stringify(transaction),
+      },
     });
   };
 
@@ -236,26 +244,23 @@ export default function TransactionsScreen() {
                 return;
               }
 
-              console.log(`🗑️ Deleting transaction: ${transaction.id}`);
-              
-              // Delete from Firestore
               await deleteTransactionFromFirestore(user.uid, transaction.id);
-              
-              // Delete from local state
+
               dispatch({
                 type: "DELETE_TRANSACTION",
                 payload: transaction.id,
               });
-              
+
               setExpandedTransactionId(null);
-              
-              // Refresh the list to get updated data
               await refreshData();
-              
+
               Alert.alert("Success", "Transaction deleted successfully");
             } catch (error: any) {
               console.error("Delete error:", error);
-              Alert.alert("Error", error.message || "Failed to delete transaction");
+              Alert.alert(
+                "Error",
+                error.message || "Failed to delete transaction"
+              );
             }
           },
         },
@@ -282,65 +287,121 @@ export default function TransactionsScreen() {
 
   const filteredTransactions = useMemo(() => {
     return state.transactions.filter((txn) => {
-      const d = new Date(txn.date);
-      const monthMatches = MONTHS[d.getMonth()] === selectedMonth;
+      // Fix: Parse date properly
+      let transactionDate;
+      try {
+        transactionDate = new Date(txn.date);
+        if (isNaN(transactionDate.getTime())) {
+          console.warn(`Invalid date for transaction: ${txn.id}`);
+          return false;
+        }
+      } catch (error) {
+        console.warn(`Date parsing error for transaction: ${txn.id}`);
+        return false;
+      }
+
+      // Fix: Month and year filtering
+      const monthMatches = MONTHS[transactionDate.getMonth()] === selectedMonth;
+      const yearMatches = transactionDate.getFullYear() === currentYear;
       
-      // Type filter
+      if (!monthMatches || !yearMatches) return false;
+
+      // Fix: Type filter
       let typeMatches = true;
       if (selectedType === "credit") {
         typeMatches = txn.type === "income";
       } else if (selectedType === "debit") {
         typeMatches = txn.type === "expense";
       }
+      if (!typeMatches) return false;
 
-      // Search filter
+      // Fix: Search filter (corrected logic)
       let searchMatches = true;
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        searchMatches = 
-          (txn.note?.toLowerCase().includes(query) || false) ||
-          (txn.category?.toLowerCase().includes(query) || false);
+        const note = (txn.note || "").toLowerCase();
+        const category = (txn.category || "").toLowerCase();
+        searchMatches = note.includes(query) || category.includes(query);
       }
+      if (!searchMatches) return false;
 
-      // Category filter
+      // Fix: Category filter
       let categoryMatches = true;
       if (selectedCategories.length > 0) {
         categoryMatches = selectedCategories.includes(txn.category);
       }
+      if (!categoryMatches) return false;
 
-      // Amount range filter
+      // Fix: Amount range filter with validation
       let amountMatches = true;
       const amount = txn.amount;
-      if (minAmount) {
-        amountMatches = amountMatches && amount >= parseFloat(minAmount);
+      if (minAmount.trim()) {
+        const min = parseFloat(minAmount);
+        if (!isNaN(min)) {
+          amountMatches = amountMatches && amount >= min;
+        }
       }
-      if (maxAmount) {
-        amountMatches = amountMatches && amount <= parseFloat(maxAmount);
+      if (maxAmount.trim()) {
+        const max = parseFloat(maxAmount);
+        if (!isNaN(max)) {
+          amountMatches = amountMatches && amount <= max;
+        }
       }
 
-      return monthMatches && typeMatches && searchMatches && categoryMatches && amountMatches;
+      return amountMatches;
     });
-  }, [state.transactions, selectedMonth, selectedType, searchQuery, selectedCategories, minAmount, maxAmount]);
+  }, [
+    state.transactions,
+    selectedMonth,
+    currentYear,
+    selectedType,
+    searchQuery,
+    selectedCategories,
+    minAmount,
+    maxAmount,
+  ]);
 
   const sections = groupByDate(filteredTransactions);
 
   const renderTransactionItem = ({ item }: { item: Transaction }) => {
     const isExpanded = expandedTransactionId === item.id;
-    
+
+    // Fix: Parse date for display
+    let displayDate = "Invalid date";
+    try {
+      const dateObj = new Date(item.date);
+      if (!isNaN(dateObj.getTime())) {
+        displayDate = dateObj.toLocaleString("en-IN", {
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+    } catch (error) {
+      console.warn(`Date display error for transaction: ${item.id}`);
+    }
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.row, isExpanded && styles.rowExpanded]}
         onPress={() => toggleExpandTransaction(item.id)}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
         <View style={styles.rowContent}>
           <View style={styles.rowLeft}>
             <View style={styles.categoryRow}>
-              <Text style={styles.category}>{item.category}</Text>
-              <View style={[
-                styles.sourceBadge,
-                item.source === "manual" ? styles.manualBadge : styles.bankBadge
-              ]}>
+              <Text style={styles.category}>{item.category || "Uncategorized"}</Text>
+              <View
+                style={[
+                  styles.sourceBadge,
+                  item.source === "manual"
+                    ? styles.manualBadge
+                    : styles.bankBadge,
+                ]}
+              >
                 <Text style={styles.sourceBadgeText}>
                   {item.source === "manual" ? "Manual" : "Bank"}
                 </Text>
@@ -354,45 +415,40 @@ export default function TransactionsScreen() {
             <Text
               style={[
                 styles.amount,
-                { color: item.type === "expense" ? "#F97373" : "#4ADE80" },
+                {
+                  color:
+                    item.type === "expense" ? "#F97373" : "#4ADE80",
+                },
               ]}
             >
               {item.type === "expense" ? "- " : "+ "}₹
-              {item.amount.toLocaleString("en-IN")}
+              {Math.abs(item.amount).toLocaleString("en-IN")}
             </Text>
-            <Ionicons 
-              name={isExpanded ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#6EE7B7" 
+            <Ionicons
+              name={isExpanded ? "chevron-up" : "chevron-down"}
+              size={20}
+              color="#6EE7B7"
               style={styles.expandIcon}
             />
           </View>
         </View>
 
-        {/* Expanded Details */}
         {isExpanded && (
           <View style={styles.expandedDetails}>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Date & Time:</Text>
               <Text style={styles.detailValue}>
-                {new Date(item.date).toLocaleString("en-IN", {
-                  weekday: "short",
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit"
-                })}
+                {displayDate}
               </Text>
             </View>
-            
+
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Transaction ID:</Text>
               <Text style={styles.detailValue} numberOfLines={1}>
-                {item.id.substring(0, 8)}...
+                {item.id ? `${item.id.substring(0, 8)}...` : "N/A"}
               </Text>
             </View>
-            
+
             {item.utr && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>UTR:</Text>
@@ -401,30 +457,46 @@ export default function TransactionsScreen() {
                 </Text>
               </View>
             )}
-            
+
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Source:</Text>
               <Text style={styles.detailValue}>
-                {item.source === "manual" ? "Added Manually" : "Bank Statement"}
+                {item.source === "manual"
+                  ? "Added Manually"
+                  : "Bank Statement"}
               </Text>
             </View>
 
-            {/* Action Buttons */}
             <View style={styles.actionButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.actionButton, styles.editButton]}
                 onPress={() => handleEditTransaction(item)}
               >
-                <Ionicons name="create-outline" size={18} color="#020B06" />
+                <Ionicons
+                  name="create-outline"
+                  size={18}
+                  color="#020B06"
+                />
                 <Text style={styles.actionButtonText}>Edit</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.actionButton, styles.deleteButton]}
                 onPress={() => handleDeleteTransaction(item)}
               >
-                <Ionicons name="trash-outline" size={18} color="#FFF" />
-                <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
+                <Ionicons
+                  name="trash-outline"
+                  size={18}
+                  color="#FFF"
+                />
+                <Text
+                  style={[
+                    styles.actionButtonText,
+                    styles.deleteButtonText,
+                  ]}
+                >
+                  Delete
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -443,9 +515,9 @@ export default function TransactionsScreen() {
   };
 
   const toggleCategory = (category: string) => {
-    setSelectedCategories(prev =>
+    setSelectedCategories((prev) =>
       prev.includes(category)
-        ? prev.filter(c => c !== category)
+        ? prev.filter((c) => c !== category)
         : [...prev, category]
     );
   };
@@ -460,19 +532,25 @@ export default function TransactionsScreen() {
 
   const showEmpty = !loading && !uploading && sections.length === 0;
 
-  // Calculate summary for selected month
+  // Fix: Month transactions calculation with year filter
   const monthTransactions = state.transactions.filter((txn) => {
-    const d = new Date(txn.date);
-    return MONTHS[d.getMonth()] === selectedMonth;
+    try {
+      const d = new Date(txn.date);
+      if (isNaN(d.getTime())) return false;
+      return MONTHS[d.getMonth()] === selectedMonth && 
+             d.getFullYear() === currentYear;
+    } catch (error) {
+      return false;
+    }
   });
 
   const totalCredit = monthTransactions
-    .filter(txn => txn.type === "income")
-    .reduce((sum, txn) => sum + txn.amount, 0);
+    .filter((txn) => txn.type === "income")
+    .reduce((sum, txn) => sum + Math.abs(txn.amount), 0);
 
   const totalDebit = monthTransactions
-    .filter(txn => txn.type === "expense")
-    .reduce((sum, txn) => sum + txn.amount, 0);
+    .filter((txn) => txn.type === "expense")
+    .reduce((sum, txn) => sum + Math.abs(txn.amount), 0);
 
   const netBalance = totalCredit - totalDebit;
 
@@ -483,7 +561,12 @@ export default function TransactionsScreen() {
         <View style={styles.headerTopRow}>
           {isSearchActive ? (
             <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+              <Ionicons
+                name="search"
+                size={20}
+                color="#9CA3AF"
+                style={styles.searchIcon}
+              />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search by description or category..."
@@ -493,24 +576,37 @@ export default function TransactionsScreen() {
                 autoFocus
               />
               <TouchableOpacity onPress={handleCloseSearch}>
-                <Ionicons name="close" size={24} color="#9CA3AF" />
+                <Ionicons name="close" size={22} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
           ) : (
             <>
-              <Text style={styles.headerTitle}>Transactions</Text>
+              <View style={styles.headerTitleBlock}>
+                <Text style={styles.headerEyebrow}>
+                  Activity · {selectedMonth} {currentYear}
+                </Text>
+                <Text style={styles.headerTitle}>Transactions</Text>
+              </View>
               <View style={styles.headerIcons}>
                 <TouchableOpacity
                   style={styles.iconButton}
                   onPress={() => setShowFilterModal(true)}
                 >
-                  <Ionicons name="filter" size={20} color="#E5F3E5" />
+                  <Ionicons
+                    name="filter"
+                    size={18}
+                    color="#E5F3E5"
+                  />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.iconButton}
                   onPress={handleSearchPress}
                 >
-                  <Ionicons name="search" size={20} color="#E5F3E5" />
+                  <Ionicons
+                    name="search"
+                    size={18}
+                    color="#E5F3E5"
+                  />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.iconButton}
@@ -518,9 +614,16 @@ export default function TransactionsScreen() {
                   disabled={uploading}
                 >
                   {uploading ? (
-                    <ActivityIndicator size="small" color="#E5F3E5" />
+                    <ActivityIndicator
+                      size="small"
+                      color="#E5F3E5"
+                    />
                   ) : (
-                    <Ionicons name="cloud-upload-outline" size={20} color="#E5F3E5" />
+                    <Ionicons
+                      name="cloud-upload-outline"
+                      size={18}
+                      color="#E5F3E5"
+                    />
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -529,9 +632,16 @@ export default function TransactionsScreen() {
                   disabled={refreshing}
                 >
                   {refreshing ? (
-                    <ActivityIndicator size="small" color="#E5F3E5" />
+                    <ActivityIndicator
+                      size="small"
+                      color="#E5F3E5"
+                    />
                   ) : (
-                    <Ionicons name="refresh" size={20} color="#E5F3E5" />
+                    <Ionicons
+                      name="refresh"
+                      size={18}
+                      color="#E5F3E5"
+                    />
                   )}
                 </TouchableOpacity>
               </View>
@@ -551,11 +661,16 @@ export default function TransactionsScreen() {
               <TouchableOpacity
                 key={m}
                 onPress={() => setSelectedMonth(m)}
-                style={[styles.monthTab, isActive && styles.monthTabActive]}
+                style={[
+                  styles.monthTab,
+                  isActive && styles.monthTabActive,
+                ]}
               >
                 <Text
-                  style={[styles.monthText, isActive && styles.monthTextActive]}
-                  numberOfLines={1}
+                  style={[
+                    styles.monthText,
+                    isActive && styles.monthTextActive,
+                  ]}
                 >
                   {m}
                 </Text>
@@ -577,7 +692,10 @@ export default function TransactionsScreen() {
                 <TouchableOpacity
                   key={type.value}
                   onPress={() => setSelectedType(type.value)}
-                  style={[styles.typeTab, isActive && styles.typeTabActive]}
+                  style={[
+                    styles.typeTab,
+                    isActive && styles.typeTabActive,
+                  ]}
                 >
                   <Text
                     style={[
@@ -593,28 +711,36 @@ export default function TransactionsScreen() {
           </ScrollView>
         </View>
 
-        {/* SUMMARY FOR SELECTED MONTH */}
+        {/* SUMMARY CARD */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Credit</Text>
-            <Text style={[styles.summaryValue, styles.creditText]}>
+            <Text
+              style={[styles.summaryValue, styles.creditText]}
+            >
               ₹{totalCredit.toLocaleString("en-IN")}
             </Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Debit</Text>
-            <Text style={[styles.summaryValue, styles.debitText]}>
+            <Text
+              style={[styles.summaryValue, styles.debitText]}
+            >
               ₹{totalDebit.toLocaleString("en-IN")}
             </Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Net</Text>
-            <Text style={[
-              styles.summaryValue, 
-              netBalance >= 0 ? styles.creditText : styles.debitText
-            ]}>
+            <Text
+              style={[
+                styles.summaryValue,
+                netBalance >= 0
+                  ? styles.creditText
+                  : styles.debitText,
+              ]}
+            >
               ₹{netBalance.toLocaleString("en-IN")}
             </Text>
           </View>
@@ -625,7 +751,9 @@ export default function TransactionsScreen() {
       {loading && !uploading ? (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color="#A7F3D0" />
-          <Text style={styles.loadingText}>Loading transactions...</Text>
+          <Text style={styles.loadingText}>
+            Loading transactions...
+          </Text>
         </View>
       ) : showEmpty ? (
         <View style={styles.emptyContainer}>
@@ -635,7 +763,8 @@ export default function TransactionsScreen() {
             resizeMode="contain"
           />
           <Text style={styles.emptyTitle}>
-            No {selectedType !== "all" ? selectedType : ""} transactions for {selectedMonth}.
+            No {selectedType !== "all" ? selectedType : ""} transactions
+            for {selectedMonth} {currentYear}.
           </Text>
           <Text style={styles.emptySubtext}>
             Add manual transactions or upload a bank statement PDF.
@@ -670,38 +799,54 @@ export default function TransactionsScreen() {
       <Modal
         visible={showFilterModal}
         animationType="slide"
-        transparent={true}
+        transparent
         onRequestClose={() => setShowFilterModal(false)}
       >
-        <TouchableWithoutFeedback onPress={() => setShowFilterModal(false)}>
+        <TouchableWithoutFeedback
+          onPress={() => setShowFilterModal(false)}
+        >
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
               <View style={styles.filterModal}>
                 <View style={styles.filterHeader}>
                   <Text style={styles.filterTitle}>Filters</Text>
-                  <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-                    <Ionicons name="close" size={24} color="#E5F3E5" />
+                  <TouchableOpacity
+                    onPress={() => setShowFilterModal(false)}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={24}
+                      color="#E5F3E5"
+                    />
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView style={styles.filterContent}>
-                  {/* Categories */}
                   <View style={styles.filterSection}>
-                    <Text style={styles.filterSectionTitle}>Categories</Text>
+                    <Text style={styles.filterSectionTitle}>
+                      Categories
+                    </Text>
                     <View style={styles.categoryChips}>
                       {CATEGORIES.map((category) => (
                         <TouchableOpacity
                           key={category}
                           style={[
                             styles.categoryChip,
-                            selectedCategories.includes(category) && styles.categoryChipSelected
+                            selectedCategories.includes(
+                              category
+                            ) && styles.categoryChipSelected,
                           ]}
                           onPress={() => toggleCategory(category)}
                         >
-                          <Text style={[
-                            styles.categoryChipText,
-                            selectedCategories.includes(category) && styles.categoryChipTextSelected
-                          ]}>
+                          <Text
+                            style={[
+                              styles.categoryChipText,
+                              selectedCategories.includes(
+                                category
+                              ) &&
+                                styles.categoryChipTextSelected,
+                            ]}
+                          >
                             {category}
                           </Text>
                         </TouchableOpacity>
@@ -709,31 +854,46 @@ export default function TransactionsScreen() {
                     </View>
                   </View>
 
-                  {/* Amount Range */}
                   <View style={styles.filterSection}>
-                    <Text style={styles.filterSectionTitle}>Amount Range</Text>
+                    <Text style={styles.filterSectionTitle}>
+                      Amount Range
+                    </Text>
                     <View style={styles.amountInputs}>
                       <View style={styles.amountInputContainer}>
-                        <Text style={styles.amountLabel}>Min</Text>
+                        <Text style={styles.amountLabel}>Min (₹)</Text>
                         <TextInput
                           style={styles.amountInput}
                           placeholder="0"
                           placeholderTextColor="#6B7280"
                           value={minAmount}
-                          onChangeText={setMinAmount}
-                          keyboardType="numeric"
+                          onChangeText={(text) => {
+                            // Allow only numbers and decimal
+                            const numeric = text.replace(/[^0-9.]/g, '');
+                            // Ensure only one decimal point
+                            const parts = numeric.split('.');
+                            if (parts.length <= 2) {
+                              setMinAmount(numeric);
+                            }
+                          }}
+                          keyboardType="decimal-pad"
                         />
                       </View>
                       <Text style={styles.amountDash}>-</Text>
                       <View style={styles.amountInputContainer}>
-                        <Text style={styles.amountLabel}>Max</Text>
+                        <Text style={styles.amountLabel}>Max (₹)</Text>
                         <TextInput
                           style={styles.amountInput}
                           placeholder="100000"
                           placeholderTextColor="#6B7280"
                           value={maxAmount}
-                          onChangeText={setMaxAmount}
-                          keyboardType="numeric"
+                          onChangeText={(text) => {
+                            const numeric = text.replace(/[^0-9.]/g, '');
+                            const parts = numeric.split('.');
+                            if (parts.length <= 2) {
+                              setMaxAmount(numeric);
+                            }
+                          }}
+                          keyboardType="decimal-pad"
                         />
                       </View>
                     </View>
@@ -741,17 +901,19 @@ export default function TransactionsScreen() {
                 </ScrollView>
 
                 <View style={styles.filterActions}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.resetButton}
                     onPress={handleResetFilters}
                   >
                     <Text style={styles.resetButtonText}>Reset All</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.applyButton}
                     onPress={handleApplyFilters}
                   >
-                    <Text style={styles.applyButtonText}>Apply Filters</Text>
+                    <Text style={styles.applyButtonText}>
+                      Apply Filters
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -775,148 +937,177 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#020B06",
+    backgroundColor: "#000000ff",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#020B06",
+    backgroundColor: "#000000ff",
   },
 
+  /* HEADER */
   header: {
     paddingTop: 16,
-    paddingBottom: 6,
-    paddingHorizontal: 16,
-    backgroundColor: "#020B06",
+    paddingBottom: 8,
+    paddingHorizontal: 20,
+    backgroundColor: "#000000ff",
   },
   headerTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  headerTitleBlock: {
+    flexDirection: "column",
+  },
+  headerEyebrow: {
+    fontSize: 11,
+    color: "#6EE7B7",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 2,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "800",
-    color: "#E5F3E5",
+    color: "#F9FAFB",
+    letterSpacing: -0.5,
   },
   headerIcons: {
     flexDirection: "row",
-    columnGap: 10,
+    columnGap: 8,
   },
   iconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#132016",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#020817",
+    borderWidth: 1,
+    borderColor: "#1E293B",
     justifyContent: "center",
     alignItems: "center",
   },
 
+  /* SEARCH BAR */
   searchContainer: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#132016",
-    borderRadius: 10,
+    backgroundColor: "#020817",
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#1E293B",
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    color: "#E5F3E5",
-    fontSize: 16,
+    color: "#F9FAFB",
+    fontSize: 15,
     paddingVertical: 4,
   },
 
+  /* MONTH STRIP */
   monthStrip: {
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   monthTab: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
     marginRight: 8,
+    backgroundColor: "#020817",
+    borderWidth: 1,
+    borderColor: "#1E293B",
   },
   monthTabActive: {
-    backgroundColor: "#E5F3E5",
+    backgroundColor: "#0F172A",
+    borderColor: "#10b981",
   },
   monthText: {
-    fontSize: 14,
-    color: "#6EE7B7",
+    fontSize: 13,
+    color: "#9CA3AF",
     fontWeight: "600",
   },
   monthTextActive: {
-    color: "#020B06",
+    color: "#F9FAFB",
   },
 
+  /* TYPE FILTERS */
   typeFilterContainer: {
-    marginTop: 12,
+    marginTop: 8,
     marginBottom: 8,
   },
   typeFilterStrip: {
     paddingVertical: 4,
   },
   typeTab: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 8,
     borderRadius: 999,
     marginRight: 8,
+    backgroundColor: "#020817",
     borderWidth: 1,
-    borderColor: "#4B5563",
+    borderColor: "#1E293B",
   },
   typeTabActive: {
-    backgroundColor: "#4ADE80",
-    borderColor: "#4ADE80",
+    backgroundColor: "#0F172A",
+    borderColor: "#10b981",
   },
   typeText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#9CA3AF",
     fontWeight: "600",
   },
   typeTextActive: {
-    color: "#020B06",
+    color: "#F9FAFB",
   },
 
+  /* SUMMARY CARD */
   summaryContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#132016",
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
+    backgroundColor: "#020817",
+    borderRadius: 24,
+    padding: 14,
+    marginTop: 6,
     marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "#1E293B",
   },
   summaryItem: {
     flex: 1,
     alignItems: "center",
   },
   summaryLabel: {
-    fontSize: 12,
-    color: "#9CA3AF",
+    fontSize: 11,
+    color: "#64748B",
+    textTransform: "uppercase",
+    fontWeight: "700",
     marginBottom: 4,
   },
   summaryValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
   },
   creditText: {
-    color: "#4ADE80",
+    color: "#22C55E",
   },
   debitText: {
-    color: "#F97373",
+    color: "#FB7185",
   },
   summaryDivider: {
     width: 1,
-    height: 24,
-    backgroundColor: "#374151",
+    height: 28,
+    backgroundColor: "#111827",
   },
 
+  /* LOADING ROW */
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -929,6 +1120,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
+  /* SECTION + LIST */
   listContent: {
     paddingBottom: 24,
   },
@@ -938,28 +1130,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
+    backgroundColor: "#000000ff",
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#D1FAE5",
+    fontWeight: "700",
+    color: "#F9FAFB",
   },
   sectionCount: {
     fontSize: 12,
-    color: "#6EE7B7",
+    color: "#10b981",
+    fontWeight: "600",
   },
+
+  /* TRANSACTION ROW */
   row: {
-    backgroundColor: "#0A100D",
+    backgroundColor: "#020817",
     marginHorizontal: 16,
     marginVertical: 6,
-    borderRadius: 12,
+    borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#1A231E",
+    borderColor: "#1E293B",
   },
   rowExpanded: {
-    borderColor: "#4ADE80",
-    backgroundColor: "#0F1712",
+    borderColor: "#10b981",
+    backgroundColor: "#020617",
   },
   rowContent: {
     flexDirection: "row",
@@ -976,19 +1172,19 @@ const styles = StyleSheet.create({
   categoryRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 6,
     flexWrap: "wrap",
   },
   category: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#E5F3E5",
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#F9FAFB",
     marginRight: 8,
   },
   sourceBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   manualBadge: {
     backgroundColor: "#374151",
@@ -998,86 +1194,87 @@ const styles = StyleSheet.create({
   },
   sourceBadgeText: {
     fontSize: 10,
-    color: "#E5F3E5",
+    color: "#F9FAFB",
     fontWeight: "600",
   },
   note: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#9CA3AF",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   amount: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "800",
   },
   expandIcon: {
-    marginTop: 8,
+    marginTop: 6,
   },
 
-  // Expanded Details
+  /* EXPANDED DETAILS */
   expandedDetails: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 14,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#374151",
+    borderTopColor: "#1F2933",
   },
   detailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   detailLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#9CA3AF",
     fontWeight: "500",
     flex: 1,
   },
   detailValue: {
-    fontSize: 14,
-    color: "#E5F3E5",
+    fontSize: 13,
+    color: "#F9FAFB",
     fontWeight: "500",
     flex: 1,
     textAlign: "right",
   },
-  
-  // Action Buttons
+
+  /* ACTION BUTTONS */
   actionButtons: {
     flexDirection: "row",
-    marginTop: 16,
-    gap: 12,
+    marginTop: 14,
+    gap: 10,
   },
   actionButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
   },
   editButton: {
-    backgroundColor: "#4ADE80",
+    backgroundColor: "#10b981",
   },
   deleteButton: {
     backgroundColor: "#F97373",
   },
   actionButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#020B06",
+    color: "#020817",
   },
   deleteButtonText: {
-    color: "#FFF",
+    color: "#FFFFFF",
   },
 
-  /* Empty state */
+  /* EMPTY STATE */
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-start",
     paddingTop: "30%",
     paddingHorizontal: 24,
+    backgroundColor: "#000000ff",
   },
   emptyImage: {
     width: "75%",
@@ -1087,24 +1284,24 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#E5F3E5",
+    color: "#F9FAFB",
     marginBottom: 8,
     textAlign: "center",
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#9CA3AF",
     textAlign: "center",
   },
 
-  /* Filter Modal */
+  /* FILTER MODAL */
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.7)",
     justifyContent: "flex-end",
   },
   filterModal: {
-    backgroundColor: "#020B06",
+    backgroundColor: "#020817",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: "80%",
@@ -1115,12 +1312,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#374151",
+    borderBottomColor: "#1E293B",
   },
   filterTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#E5F3E5",
+    color: "#F9FAFB",
   },
   filterContent: {
     padding: 16,
@@ -1131,7 +1328,7 @@ const styles = StyleSheet.create({
   filterSectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#E5F3E5",
+    color: "#F9FAFB",
     marginBottom: 12,
   },
   categoryChips: {
@@ -1143,21 +1340,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#374151",
+    backgroundColor: "#020817",
     borderWidth: 1,
-    borderColor: "#4B5563",
+    borderColor: "#1E293B",
   },
   categoryChipSelected: {
-    backgroundColor: "#4ADE80",
-    borderColor: "#4ADE80",
+    backgroundColor: "#10b981",
+    borderColor: "#10b981",
   },
   categoryChipText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#9CA3AF",
     fontWeight: "500",
   },
   categoryChipTextSelected: {
-    color: "#020B06",
+    color: "#020817",
   },
   amountInputs: {
     flexDirection: "row",
@@ -1173,11 +1370,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   amountInput: {
-    backgroundColor: "#374151",
+    backgroundColor: "#020817",
     borderRadius: 8,
-    padding: 12,
-    color: "#E5F3E5",
-    fontSize: 16,
+    padding: 10,
+    color: "#F9FAFB",
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: "#1E293B",
   },
   amountDash: {
     fontSize: 18,
@@ -1188,49 +1387,51 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: "#374151",
+    borderTopColor: "#1E293B",
     gap: 12,
   },
   resetButton: {
     flex: 1,
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
-    backgroundColor: "#374151",
+    backgroundColor: "#020817",
+    borderWidth: 1,
+    borderColor: "#1E293B",
     alignItems: "center",
   },
   resetButtonText: {
     color: "#9CA3AF",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
   },
   applyButton: {
     flex: 1,
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
-    backgroundColor: "#4ADE80",
+    backgroundColor: "#10b981",
     alignItems: "center",
   },
   applyButtonText: {
-    color: "#020B06",
-    fontSize: 16,
+    color: "#020817",
+    fontSize: 15,
     fontWeight: "600",
   },
 
-  /* ADD TRANSACTION BUTTON */
+  /* FLOATING ADD BUTTON */
   addButton: {
     position: "absolute",
     bottom: 30,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#4ADE80",
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    backgroundColor: "#10b981",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 8,
   },
 });

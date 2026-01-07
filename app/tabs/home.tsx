@@ -10,6 +10,7 @@ import {
   StatusBar,
   RefreshControl,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import * as Progress from "react-native-progress";
@@ -18,15 +19,21 @@ import { TopNavbar } from "../../components/layout/TopNavbar";
 import { auth, db } from "../../services/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useRouter, useFocusEffect } from "expo-router";
+import { useAuth } from "../../services/AuthContext";
+import { fetchTransactionsFromFirestore } from "../../services/firestoreTransactions";
 
 const TABS = ["All", "Expense", "Income"] as const;
 type TabKey = (typeof TABS)[number];
 
-const getTxDate = (date: any) =>
-  date?.toDate ? date.toDate() : new Date(date);
-
-// Enhanced Category → Icon map with colors
+// Complete category → icon/color map
 const CATEGORY_CONFIG = {
+  // Income
+  "Income / Transfer In": {
+    icon: "cash-plus" as const,
+    color: "#4CAF50",
+  },
+
+  // Core Expenses
   "Food & Dining": {
     icon: "silverware-fork-knife" as const,
     color: "#FF6B6B",
@@ -95,73 +102,135 @@ const CATEGORY_CONFIG = {
     icon: "laptop" as const,
     color: "#26A69A",
   },
-  "Income / Transfer In": {
-    icon: "cash-plus" as const,
-    color: "#10b981",
+  
+  // Additional categories
+  "Banking & Finance": {
+    icon: "bank-outline" as const,
+    color: "#9C27B0",
+  },
+  "Child & Family": {
+    icon: "account-child-outline" as const,
+    color: "#FF9800",
   },
   "Transfer Out": {
     icon: "bank-transfer-out" as const,
-    color: "#fbbf24",
+    color: "#F44336",
   },
-};
+  "Other Expense": {
+    icon: "dots-horizontal-circle-outline" as const,
+    color: "#94a3b8",
+  },
+} as const;
 
-// Function to check if transaction is fake/spam
-const isFakeTransaction = (transaction: any) => {
-  const suspiciousKeywords = ["test", "fake", "spam", "demo", "sample"];
-  const note = (transaction.note || "").toLowerCase();
-  const category = (transaction.category || "").toLowerCase();
+// Helper function to get category config with fallback
+const getCategoryConfig = (category: string) => {
+  if (CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG]) {
+    return CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
+  }
   
-  for (const keyword of suspiciousKeywords) {
-    if (note.includes(keyword) || category.includes(keyword)) {
-      return true;
+  const lowerCaseCategory = category.toLowerCase();
+  for (const [key, config] of Object.entries(CATEGORY_CONFIG)) {
+    if (key.toLowerCase() === lowerCaseCategory) {
+      return config;
     }
   }
   
-  if (Math.abs(transaction.amount) > 1000000) {
-    return true;
-  }
+  return {
+    icon: "help-circle-outline" as const,
+    color: "#94a3b8",
+  };
+};
+
+// Fixed fake transaction filter (less strict)
+const isFakeTransaction = (transaction: any) => {
+  // Only filter truly fake transactions
+  const note = (transaction.note || "").toLowerCase();
+  const category = (transaction.category || "").toLowerCase();
   
-  if (Math.abs(transaction.amount) === 0) {
+  // Only filter if BOTH conditions are true:
+  // 1. Note contains explicit fake keywords
+  // 2. Amount is suspiciously small or large
+  const isSuspiciousNote = note === "test" || note === "fake" || 
+                           note === "spam" || note === "demo" || 
+                           note === "sample";
+  
+  const isSuspiciousAmount = Math.abs(transaction.amount) === 0 || 
+                            Math.abs(transaction.amount) > 1000000;
+  
+  if (isSuspiciousNote && isSuspiciousAmount) {
     return true;
   }
   
   return false;
 };
 
+const getTxDate = (date: any) =>
+  date?.toDate ? date.toDate() : new Date(date);
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning,";
+  if (hour < 17) return "Good afternoon,";
+  if (hour < 21) return "Good evening,";
+  return "What's up,";
+}
+
 export default function HomeScreen() {
   const [monthlyBudget, setMonthlyBudget] = React.useState<number>(0);
-  const { state } = useTransactions();
-  const allTransactions = state.transactions;
-
-  const [activeTab, setActiveTab] = React.useState<TabKey>("All");
-  const [refreshing, setRefreshing] = React.useState(false);
-
   const [displayName, setDisplayName] = React.useState("");
   const [userCategories, setUserCategories] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<TabKey>("All");
 
+  const { state, dispatch } = useTransactions();
+  const { user } = useAuth();
+  const allTransactions = state.transactions;
   const router = useRouter();
 
-  // Greeting Logic
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning,";
-    if (hour < 17) return "Good afternoon,";
-    if (hour < 21) return "Good evening,";
-    return "What's up,";
-  };
+  const greeting = getGreeting();
+
+  // Load transactions when component mounts or user changes
+  React.useEffect(() => {
+    if (user) {
+      loadTransactions();
+    }
+  }, [user]);
+
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user && !loading) {
+        refreshData();
+      }
+    }, [user, loading])
+  );
+
+  const loadTransactions = React.useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const txns = await fetchTransactionsFromFirestore(user.uid);
+      dispatch({ type: "SET_TRANSACTIONS", payload: txns });
+    } catch (error) {
+      console.error("Error loading transactions:", error);
+    }
+  }, [user, dispatch]);
 
   const fetchUserData = React.useCallback(async () => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       const userSnap = await getDoc(doc(db, "users", user.uid));
       if (userSnap.exists()) {
         const data = userSnap.data();
-        const fullName = data?.name || "";
-        const firstName = fullName.trim().split(" ")[0] || "User";
-        setDisplayName(firstName);
-        setMonthlyBudget(data?.monthlyBudget || 0);
+        setDisplayName(data?.name?.split(" ")[0] || "User");
+        const budget = data?.monthlyBudget || data?.monthlyIncome || 0;
+        setMonthlyBudget(budget);
         
         // Get user's preferred categories (EXCLUDE "Income / Transfer In")
         const categories = (data?.preferredCategoryNames || [])
@@ -169,7 +238,7 @@ export default function HomeScreen() {
         setUserCategories(categories);
       }
     } catch (error) {
-      console.error(error);
+      console.error("User fetch error:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -180,15 +249,28 @@ export default function HomeScreen() {
     fetchUserData();
   }, [fetchUserData]);
 
-  // Refresh when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchUserData();
-    }, [fetchUserData])
-  );
+  const refreshData = async () => {
+    if (!user) return;
+    
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchUserData(),
+        loadTransactions()
+      ]);
+    } catch (error) {
+      console.error("Refresh error:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-  // Filter: current month + ONLY user's selected categories + Remove fake transactions
-  const transactions = React.useMemo(() => {
+  const onRefresh = async () => {
+    await refreshData();
+  };
+
+  // Current month expense transactions
+  const currentMonthExpenseTransactions = React.useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -215,27 +297,33 @@ export default function HomeScreen() {
     return validTransactions.filter((tx) => {
       const txDate = getTxDate(tx.date);
       
+      // Check if transaction is in current month
       const isCurrentMonth =
         txDate.getMonth() === currentMonth &&
         txDate.getFullYear() === currentYear;
 
       if (!isCurrentMonth) return false;
 
-      // Include "Transfer Out" even if not in user categories
+      // Check if transaction category is in user's selected categories
+      // OR if it's Transfer Out (always show transfers)
       return userCategories.includes(tx.category) || tx.category === "Transfer Out";
     });
   }, [allTransactions, userCategories]);
 
-  // Calculate income from "Income / Transfer In" category only
-  const incomeTransactions = React.useMemo(() => {
+  // Calculate income from "Income / Transfer In" category only (current month)
+  const currentMonthIncomeTransactions = React.useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     
     return allTransactions.filter((tx) => {
+      // Only include "Income / Transfer In" category
       if (tx.category !== "Income / Transfer In") return false;
+      
+      // Filter out fake income transactions
       if (isFakeTransaction(tx)) return false;
       
+      // Check if in current month
       const txDate = getTxDate(tx.date);
       return (
         txDate.getMonth() === currentMonth &&
@@ -245,60 +333,60 @@ export default function HomeScreen() {
   }, [allTransactions]);
 
   // Calculate totals - INCLUDING Transfer Out as expense
-  const totalExpense = transactions
-    .filter(tx => tx.type === "expense" || tx.category === "Transfer Out")
-    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const totalExpense = React.useMemo(() => {
+    return currentMonthExpenseTransactions
+      .filter(tx => tx.type === "expense" || tx.category === "Transfer Out")
+      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  }, [currentMonthExpenseTransactions]);
 
-  const totalIncome = incomeTransactions
-    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const totalIncome = React.useMemo(() => {
+    return currentMonthIncomeTransactions
+      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  }, [currentMonthIncomeTransactions]);
 
+  // Calculate budget utilization
   const remainingBudget = monthlyBudget - totalExpense;
-  const budgetUtilizationRaw =
-    monthlyBudget > 0 ? (totalExpense / monthlyBudget) * 100 : 0;
-  const budgetUtilization = Math.min(budgetUtilizationRaw, 100);
-
-  // Escalating risk color
-  const budgetColor =
-    budgetUtilization > 90 ? "#dc2626" :
-    budgetUtilization > 75 ? "#f59e0b" :
-    "#10b981";
+  const budgetUtilization =
+    monthlyBudget > 0
+      ? Math.min(totalExpense / monthlyBudget, 1)
+      : 0;
 
   // Filtered transactions for display (based on active tab)
-  const filteredRecent = React.useMemo(() => {
+  const filteredTransactions = React.useMemo(() => {
     if (activeTab === "All") {
-      return [...incomeTransactions, ...transactions].sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
+      // Show all transactions except fake ones
+      return [...currentMonthIncomeTransactions, ...currentMonthExpenseTransactions]
+        .sort((a, b) => 
+          getTxDate(b.date).getTime() - getTxDate(a.date).getTime()
+        );
     }
-    if (activeTab === "Income") return incomeTransactions;
-    return transactions.filter(tx => tx.type === "expense" || tx.category === "Transfer Out");
-  }, [transactions, incomeTransactions, activeTab]);
+    if (activeTab === "Income") return currentMonthIncomeTransactions;
+    
+    // For expense tab, show both regular expenses and Transfer Out
+    return currentMonthExpenseTransactions.filter(tx => 
+      tx.type === "expense" || tx.category === "Transfer Out"
+    );
+  }, [currentMonthExpenseTransactions, currentMonthIncomeTransactions, activeTab]);
 
   // Calculate transaction counts for tab labels
   const transactionCounts = React.useMemo(() => {
-    const expenseCount = transactions.filter(tx => 
+    const expenseCount = currentMonthExpenseTransactions.filter(tx => 
       tx.type === "expense" || tx.category === "Transfer Out"
     ).length;
     
     return {
-      all: transactions.length + incomeTransactions.length,
+      all: currentMonthExpenseTransactions.length + currentMonthIncomeTransactions.length,
       expense: expenseCount,
-      income: incomeTransactions.length,
+      income: currentMonthIncomeTransactions.length,
     };
-  }, [transactions, incomeTransactions]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchUserData();
-  };
+  }, [currentMonthExpenseTransactions, currentMonthIncomeTransactions]);
 
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" />
         <View style={styles.loadingContainer}>
-          <MaterialCommunityIcons name="loading" size={40} color="#10b981" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <ActivityIndicator size="large" color="#10b981" />
+          <Text style={styles.loadingText}>Financing your life...</Text>
         </View>
       </SafeAreaView>
     );
@@ -308,14 +396,6 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <TopNavbar />
-
-      {/* Greeting block */}
-      <View style={styles.header}>
-        <Text style={styles.greetingText}>
-          {getGreeting()} 👋
-        </Text>
-        <Text style={styles.userNameText}>{displayName}</Text>
-      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -329,15 +409,21 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Main Dashboard Cards */}
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.greetingText}>{greeting}</Text>
+          <Text style={styles.userNameText}>{displayName}</Text>
+        </View>
+
+        {/* Top cards row */}
         <View style={styles.cardRow}>
           <TouchableOpacity
-            style={[styles.budgetCard, { borderLeftColor: budgetColor }]}
+            style={styles.budgetCard}
             activeOpacity={0.9}
             onPress={() => router.push("/analysis")}
           >
             <View style={styles.cardHeader}>
-              <Text style={styles.cardLabel}>Monthly Budget</Text>
+              <Text style={styles.cardLabel}>Remaining Budget</Text>
               <View
                 style={[
                   styles.statusDot,
@@ -352,27 +438,25 @@ export default function HomeScreen() {
               ₹{remainingBudget.toLocaleString("en-IN")}
             </Text>
 
-            {monthlyBudget > 0 && (
-              <View style={styles.progressContainer}>
-                <Progress.Bar
-                  progress={budgetUtilization / 100}
-                  width={null}
-                  height={6}
-                  color={budgetColor}
-                  unfilledColor="#1e293b"
-                  borderWidth={0}
-                  borderRadius={10}
-                />
-                <View style={styles.progressLabels}>
-                  <Text style={styles.progressText}>
-                    {Math.round(budgetUtilization)}% spent
-                  </Text>
-                  <Text style={styles.progressText}>
-                    Limit: ₹{monthlyBudget.toLocaleString("en-IN")}
-                  </Text>
-                </View>
+            <View style={styles.progressContainer}>
+              <Progress.Bar
+                progress={budgetUtilization}
+                width={null}
+                height={6}
+                color="#10b981"
+                unfilledColor="#1e293b"
+                borderWidth={0}
+                borderRadius={10}
+              />
+              <View style={styles.progressLabels}>
+                <Text style={styles.progressText}>
+                  {Math.round(budgetUtilization * 100)}% used
+                </Text>
+                <Text style={styles.progressText}>
+                  Limit: ₹{monthlyBudget.toLocaleString("en-IN")}
+                </Text>
               </View>
-            )}
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -381,57 +465,67 @@ export default function HomeScreen() {
           >
             <View style={styles.iconCircle}>
               <MaterialCommunityIcons
-                name="finance"
+                name="chart-arc"
                 size={24}
                 color="#10b981"
               />
             </View>
-            <Text style={styles.analysisLabel}>Analysis</Text>
+            <Text style={styles.analysisLabel}>Analytics</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Quick Stats Grid */}
+        {/* Quick stats */}
         <View style={styles.statsGrid}>
           <View style={styles.statItem}>
             <Text style={styles.statTitle}>Income</Text>
-            <Text style={[styles.statAmount, { color: "#10b981" }]}>
+            <Text
+              style={[styles.statAmount, { color: "#10b981" }]}
+            >
               +₹{totalIncome.toLocaleString("en-IN")}
             </Text>
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statTitle}>Expense</Text>
-            <Text style={[styles.statAmount, { color: "#fb7185" }]}>
+            <Text
+              style={[styles.statAmount, { color: "#fb7185" }]}
+            >
               -₹{totalExpense.toLocaleString("en-IN")}
             </Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statTitle}>Total</Text>
-            <Text style={[styles.statAmount, { color: "#fbbf24" }]}>
+            <Text style={styles.statTitle}>Total TX</Text>
+            <Text
+              style={[styles.statAmount, { color: "#facc15" }]}
+            >
               {transactionCounts.all}
             </Text>
           </View>
         </View>
 
-        {/* Info about current month/user categories */}
+        {/* Current month & categories info */}
         <View style={styles.infoContainer}>
-          <MaterialCommunityIcons name="information-outline" size={16} color="#64748b" />
+          <MaterialCommunityIcons 
+            name="calendar-month" 
+            size={14} 
+            color="#64748b" 
+          />
           <Text style={styles.infoText}>
-            Showing {userCategories.length > 0 
-              ? `${userCategories.length} selected categories` 
-              : "all categories"} for current month
+            {userCategories.length > 0 
+              ? `Showing ${userCategories.length} categories for ${new Date().toLocaleString('default', { month: 'long' })}`
+              : `Showing all categories for ${new Date().toLocaleString('default', { month: 'long' })}`
+            }
           </Text>
         </View>
 
-        {/* Filter Tabs */}
+        {/* Tabs */}
         <View style={styles.tabContainer}>
           {TABS.map((tab) => (
             <Pressable
               key={tab}
               onPress={() => setActiveTab(tab)}
-              style={({ pressed }) => [
+              style={[
                 styles.tab,
                 activeTab === tab && styles.activeTab,
-                pressed && { opacity: 0.7 },
               ]}
             >
               <Text
@@ -442,98 +536,128 @@ export default function HomeScreen() {
               >
                 {tab}
               </Text>
+              <View style={styles.tabCount}>
+                <Text style={[
+                  styles.tabCountText,
+                  activeTab === tab && styles.activeTabCountText,
+                ]}>
+                  {transactionCounts[tab.toLowerCase() as keyof typeof transactionCounts]}
+                </Text>
+              </View>
             </Pressable>
           ))}
         </View>
 
-        {/* Recent Transactions Section */}
-        <Text style={styles.sectionTitle}>Recent Activities</Text>
-        {filteredRecent.length === 0 ? (
+        {/* Recent activities */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Activities</Text>
+          <TouchableOpacity
+            onPress={() => router.push("/tabs/transactions")}
+          >
+            <Text style={styles.viewAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {filteredTransactions.length === 0 ? (
           <View style={styles.emptyContainer}>
             <MaterialCommunityIcons
               name="receipt-text-outline"
-              size={60}
+              size={48}
               color="#64748b"
             />
-            <Text style={styles.emptyText}>
+            <Text style={styles.emptyTitle}>
               No {activeTab === "All" ? "" : activeTab.toLowerCase()}{" "}
               transactions this month
-              {userCategories.length > 0 && " in your selected categories"}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {userCategories.length > 0 && "in your selected categories"}
             </Text>
           </View>
         ) : (
-          filteredRecent.slice(0, 10).map((tx, idx) => {
-            const config = CATEGORY_CONFIG[tx.category as keyof typeof CATEGORY_CONFIG] || {
-              icon: "dots-horizontal-circle-outline",
-              color: "#64748b",
-            };
+          <>
+            {filteredTransactions.slice(0, 10).map((tx: any, idx: number) => {
+              const config = getCategoryConfig(tx.category);
 
-            const isIncome = tx.category === "Income / Transfer In";
-            const isTransferOut = tx.category === "Transfer Out";
-            const color = isIncome
-              ? "#10b981"
-              : isTransferOut
-              ? "#fbbf24"
-              : "#f9fafc";
+              const isIncome =
+                tx.category === "Income / Transfer In" ||
+                tx.type === "income";
+              const isTransferOut = tx.category === "Transfer Out";
+              const amountColor = isIncome
+                ? "#10b981"
+                : isTransferOut
+                ? "#facc15"
+                : "#fb7185";
 
-            const txDate = getTxDate(tx.date);
-            const formattedDate = txDate.toLocaleDateString('en-IN', { 
-              day: 'numeric', 
-              month: 'short',
-              year: txDate.getFullYear() !== new Date().getFullYear() ? '2-digit' : undefined
-            });
+              const dateObj = getTxDate(tx.date);
+              const dateLabel = dateObj.toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: dateObj.getFullYear() !== new Date().getFullYear() ? '2-digit' : undefined
+              });
 
-            return (
-              <View key={tx.id || idx} style={styles.transactionItem}>
-                <View style={[
-                  styles.txIconBox,
-                  { backgroundColor: isTransferOut ? '#fbbf2415' : `${config.color}15` }
-                ]}>
-                  <MaterialCommunityIcons
-                    name={config.icon}
-                    size={24}
-                    color={isTransferOut ? "#fbbf24" : (isIncome ? "#10b981" : config.color)}
-                  />
-                </View>
-                <View style={styles.txInfo}>
-                  <Text style={styles.txCategory}>{tx.category}</Text>
-                  {tx.note ? (
-                    <Text style={styles.txNote} numberOfLines={1}>
-                      {tx.note}
+              const typeText = isIncome ? "income" : (isTransferOut ? "transfer" : tx.type);
+
+              return (
+                <TouchableOpacity
+                  key={tx.id || idx}
+                  style={styles.transactionItem}
+                  onPress={() => {
+                    // Optional: Add transaction detail view
+                  }}
+                >
+                  <View style={[
+                    styles.txIconBox,
+                    { backgroundColor: isTransferOut ? '#facc1515' : `${config.color}15` }
+                  ]}>
+                    <MaterialCommunityIcons
+                      name={config.icon}
+                      size={20}
+                      color={isTransferOut ? "#facc15" : (isIncome ? "#10b981" : config.color)}
+                    />
+                  </View>
+                  <View style={styles.txInfo}>
+                    <Text style={styles.txCategory}>
+                      {tx.category || "Others"}
                     </Text>
-                  ) : null}
-                  <Text style={styles.txDate}>
-                    {formattedDate}
-                    {tx.source && tx.source !== 'manual' && (
-                      <Text style={styles.txSource}> • {tx.source}</Text>
-                    )}
+                    {tx.note ? (
+                      <Text style={styles.txNote} numberOfLines={1}>
+                        {tx.note}
+                      </Text>
+                    ) : null}
+                    <View style={styles.txMeta}>
+                      <Text style={styles.txDate}>{dateLabel}</Text>
+                      <Text style={[
+                        styles.txType,
+                        { color: amountColor }
+                      ]}>
+                        {typeText}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.txAmount, { color: amountColor }]}>
+                    {isIncome ? "+" : "-"}₹
+                    {Math.abs(tx.amount).toLocaleString("en-IN")}
                   </Text>
-                </View>
-                <View style={styles.txAmountContainer}>
-                  <Text style={[styles.txAmount, { color }]}>
-                    {isIncome ? "+" : "-"}₹{Math.abs(tx.amount).toLocaleString("en-IN")}
-                  </Text>
-                  <Text style={[styles.txType, { color }]}>
-                    {isIncome ? "income" : (isTransferOut ? "transfer" : tx.type)}
-                  </Text>
-                </View>
-              </View>
-            );
-          })
-        )}
+                </TouchableOpacity>
+              );
+            })}
 
-        {filteredRecent.length > 10 && (
-          <TouchableOpacity 
-            style={styles.viewAllBtn}
-            onPress={() => router.push("/tabs/transactions")}
-          >
-            <Text style={styles.viewAllText}>View All Transactions</Text>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={16}
-              color="#64748b"
-            />
-          </TouchableOpacity>
+            {filteredTransactions.length > 10 && (
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => router.push("/tabs/transactions")}
+              >
+                <Text style={styles.viewAllButtonText}>
+                  View All {filteredTransactions.length} Transactions
+                </Text>
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={20}
+                  color="#10b981"
+                />
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </ScrollView>
 
@@ -542,7 +666,7 @@ export default function HomeScreen() {
         style={styles.fab}
         onPress={() => router.push("/add")}
       >
-        <Ionicons name="add" size={30} color="#022C22" />
+        <Ionicons name="add" size={32} color="#000" />
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -550,53 +674,52 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
-
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  loadingText: {
-    color: "#64748b",
-    marginTop: 12,
-    fontSize: 16,
+  loadingText: { 
+    color: "#64748b", 
+    fontSize: 14,
+    marginTop: 10,
   },
 
-  // Greeting block
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 120 },
+
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
-    backgroundColor: "#0D0D0D",
-    borderBottomWidth: 1,
-    borderBottomColor: "#1A1C1A",
+    paddingHorizontal: 0,
+    paddingTop: 10,
+    paddingBottom: 15,
   },
   greetingText: {
     color: "#64748b",
-    fontSize: 16,
-    fontWeight: "500",
+    fontSize: 14,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
   userNameText: {
     color: "#fff",
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "800",
-    letterSpacing: -0.5,
-    textTransform: "capitalize",
+    letterSpacing: -1,
   },
 
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
-
-  // Cards
-  cardRow: { flexDirection: "row", gap: 12, height: 160, marginTop: 16 },
+  cardRow: {
+    flexDirection: "row",
+    gap: 12,
+    height: 170,
+    marginTop: 10,
+  },
   budgetCard: {
     flex: 2,
     backgroundColor: "#0f172a",
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 20,
     justifyContent: "space-between",
     borderWidth: 1,
     borderColor: "#1e293b",
-    borderLeftWidth: 4,
   },
   cardHeader: {
     flexDirection: "row",
@@ -605,50 +728,55 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     color: "#94a3b8",
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "800",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  budgetValue: { color: "#fff", fontSize: 30, fontWeight: "700" },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  budgetValue: {
+    color: "#fff",
+    fontSize: 32,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
 
   progressContainer: { marginTop: 10 },
   progressLabels: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 6,
+    marginTop: 8,
   },
   progressText: {
     color: "#64748b",
     fontSize: 10,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   analysisSmallCard: {
     flex: 1,
-    backgroundColor: "#141414",
-    borderRadius: 24,
+    backgroundColor: "#0f172a",
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#1e293b",
   },
   iconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     backgroundColor: "#10b98115",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   analysisLabel: {
-    color: "#9CA3AF",
+    color: "#94a3b8",
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
-  // Quick stats
   statsGrid: {
     flexDirection: "row",
     gap: 12,
@@ -657,19 +785,23 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     backgroundColor: "#0f172a",
-    padding: 15,
-    borderRadius: 20,
+    padding: 18,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: "#1e293b",
+    alignItems: "center",
   },
   statTitle: {
     color: "#64748b",
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "800",
     textTransform: "uppercase",
-    marginBottom: 5,
+    marginBottom: 6,
   },
-  statAmount: { fontSize: 16, fontWeight: "700" },
+  statAmount: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
 
   // Info Container
   infoContainer: {
@@ -678,74 +810,82 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f172a",
     borderRadius: 12,
     padding: 12,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 20,
     borderWidth: 1,
     borderColor: "#1e293b",
   },
   infoText: {
-    color: "#64748b",
+    color: "#94a3b8",
     fontSize: 12,
     marginLeft: 8,
     flex: 1,
-    lineHeight: 16,
   },
 
-  // Tabs
   tabContainer: {
     flexDirection: "row",
     backgroundColor: "#0f172a",
-    borderRadius: 15,
-    padding: 5,
+    borderRadius: 18,
+    padding: 6,
     marginTop: 16,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "center",
   },
-  activeTab: {
-    backgroundColor: "#1e293b",
-  },
+  activeTab: { backgroundColor: "#1e293b" },
   tabText: {
-    color: "#94a3b8",
-    fontWeight: "600",
+    color: "#64748b",
+    fontWeight: "700",
     fontSize: 13,
   },
-  activeTabText: {
+  activeTabText: { color: "#10b981" },
+  tabCount: {
+    backgroundColor: "#334155",
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 6,
+  },
+  tabCountText: {
+    color: "#64748b",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  activeTabCountText: {
     color: "#10b981",
   },
 
-  // Transactions
-  sectionTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    marginTop: 30,
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 35,
     marginBottom: 15,
   },
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: 40,
-    paddingVertical: 40,
+  sectionTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "800",
   },
-  emptyText: {
-    color: "#64748b",
-    marginTop: 12,
-    fontSize: 14,
-    textAlign: "center",
+  viewAllText: {
+    color: "#10b981",
+    fontWeight: "700",
+    fontSize: 13,
   },
+
   transactionItem: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#0f172a",
-    paddingVertical: 14,
-    paddingHorizontal: 15,
-    borderRadius: 18,
-    marginBottom: 10,
+    padding: 16,
+    borderRadius: 22,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#1F2933",
+    borderColor: "#1e293b",
   },
   txIconBox: {
     width: 40,
@@ -754,69 +894,91 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  txInfo: { flex: 1, marginLeft: 15 },
+  txInfo: { 
+    flex: 1, 
+    marginLeft: 16 
+  },
   txCategory: {
     color: "#f8fafc",
-    fontWeight: "600",
-    fontSize: 14,
+    fontWeight: "700",
+    fontSize: 15,
   },
   txNote: {
-    color: "#64748b",
+    color: "#94a3b8",
     fontSize: 12,
     marginTop: 2,
   },
+  txMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 4,
+  },
   txDate: {
     color: "#64748b",
-    fontSize: 11,
-    marginTop: 2,
-  },
-  txSource: {
-    color: "#64748b",
-    fontSize: 10,
-    fontStyle: "italic",
-  },
-  txAmountContainer: {
-    alignItems: "flex-end",
-  },
-  txAmount: {
-    fontWeight: "700",
-    fontSize: 15,
-    minWidth: 90,
-    textAlign: "right",
+    fontSize: 12,
   },
   txType: {
     fontSize: 10,
-    marginTop: 2,
     textTransform: "capitalize",
+    fontWeight: "600",
   },
-  viewAllBtn: {
+  txAmount: {
+    fontWeight: "800",
+    fontSize: 16,
+  },
+
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    color: "#64748b",
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: "center",
+  },
+
+  viewAllButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 24,
-    marginBottom: 20,
-    paddingVertical: 12,
+    backgroundColor: "#0f172a",
+    padding: 14,
+    borderRadius: 16,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#1e293b",
   },
-  viewAllText: { 
-    color: "#64748b", 
-    marginRight: 4, 
-    fontSize: 14 
+  viewAllButtonText: {
+    color: "#10b981",
+    fontWeight: "700",
+    fontSize: 14,
+    marginRight: 8,
   },
 
-  // FAB
   fab: {
     position: "absolute",
-    bottom: 30,
+    bottom: 40,
     right: 25,
-    backgroundColor: "#34D399",
-    width: 58,
-    height: 58,
-    borderRadius: 22,
+    backgroundColor: "#10b981",
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#10b981",
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: 6 },
   },
 });
