@@ -667,6 +667,7 @@ export default function SpendingPredictionPage() {
       setPredictions([]);
 
       const API_URL = "https://female-harmonie-santhosh1307-cfbbd226.koyeb.app/predict";
+     
       const requestData = { transactions, days: selectedDays };
 
       const res = await fetch(API_URL, {
