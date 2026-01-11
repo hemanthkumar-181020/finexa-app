@@ -1,121 +1,145 @@
-// app/categories/index.tsx
 import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
   SafeAreaView,
   Text,
-  TouchableOpacity,
   StatusBar,
   ScrollView,
   Alert,
   TextInput,
   Modal,
+  Pressable,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { auth, db } from "../services/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
-const CATEGORY_CONFIG = {
+type CategoryConfig = {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  color: string;
+  defaultGoal: number;
+  description: string;
+};
+
+const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   "Food & Dining": {
-    icon: "silverware-fork-knife" as const,
+    icon: "silverware-fork-knife",
     color: "#FF6B6B",
-    description: "Restaurants, cafes, food delivery",
+    defaultGoal: 10000,
+    description: "Restaurants, cafes, and food deliveries",
   },
-  "Groceries": {
-    icon: "cart-outline" as const,
+  Groceries: {
+    icon: "cart-outline",
     color: "#4ECDC4",
-    description: "Supermarket shopping, vegetables, fruits",
+    defaultGoal: 8000,
+    description: "Supermarket and grocery shopping",
   },
-  "Travel": {
-    icon: "airplane" as const,
+  Travel: {
+    icon: "airplane",
     color: "#45B7D1",
-    description: "Flights, hotels, vacations",
+    defaultGoal: 15000,
+    description: "Flights, trains, hotels, and cab rides",
   },
-  "Fuel": {
-    icon: "gas-station" as const,
+  Fuel: {
+    icon: "gas-station",
     color: "#FFA726",
-    description: "Petrol, diesel, vehicle fuel",
+    defaultGoal: 5000,
+    description: "Petrol, diesel, and gas station expenses",
   },
-  "Shopping": {
-    icon: "shopping-outline" as const,
+  Shopping: {
+    icon: "shopping-outline",
     color: "#AB47BC",
-    description: "Clothing, electronics, online shopping",
+    defaultGoal: 12000,
+    description: "Clothing, electronics, and retail purchases",
   },
-  "Entertainment": {
-    icon: "movie-open-outline" as const,
+  Entertainment: {
+    icon: "movie-open-outline",
     color: "#5C6BC0",
-    description: "Movies, concerts, events",
+    defaultGoal: 6000,
+    description: "Movies, concerts, and streaming services",
   },
-  "Utilities": {
-    icon: "lightning-bolt-outline" as const,
+  Utilities: {
+    icon: "lightning-bolt-outline",
     color: "#FFEE58",
-    description: "Electricity, water, internet bills",
+    defaultGoal: 7000,
+    description: "Electricity, water, and internet bills",
   },
-  "Recharge": {
-    icon: "cellphone" as const,
+  Recharge: {
+    icon: "cellphone",
     color: "#26C6DA",
-    description: "Mobile, DTH, wallet recharge",
+    defaultGoal: 2000,
+    description: "Mobile recharges and data packs",
   },
-  "Healthcare": {
-    icon: "hospital-box-outline" as const,
+  Healthcare: {
+    icon: "hospital-box-outline",
     color: "#EF5350",
-    description: "Medicines, doctor visits, health checkups",
+    defaultGoal: 5000,
+    description: "Medicines, doctor visits, and hospital bills",
   },
-  "Education": {
-    icon: "school-outline" as const,
+  Education: {
+    icon: "school-outline",
     color: "#7E57C2",
-    description: "Courses, books, tuition fees",
+    defaultGoal: 10000,
+    description: "Tuition fees, books, and courses",
   },
   "Personal Care": {
-    icon: "face-woman-shimmer-outline" as const,
+    icon: "face-woman-shimmer-outline",
     color: "#EC407A",
-    description: "Salon, spa, grooming",
+    defaultGoal: 4000,
+    description: "Salon, spa, and grooming services",
   },
   "Home & Kitchen": {
-    icon: "home-outline" as const,
+    icon: "home-outline",
     color: "#66BB6A",
-    description: "Furniture, appliances, home supplies",
+    defaultGoal: 9000,
+    description: "Home appliances and kitchen supplies",
   },
   "Vehicle Maintenance": {
-    icon: "car-wrench" as const,
+    icon: "car-wrench",
     color: "#8D6E63",
-    description: "Repairs, servicing, insurance",
+    defaultGoal: 3000,
+    description: "Car servicing and repairs",
   },
   "Hobbies & Leisure": {
-    icon: "soccer" as const,
+    icon: "soccer",
     color: "#29B6F6",
-    description: "Sports, hobbies, leisure activities",
+    defaultGoal: 4000,
+    description: "Sports, books, and hobby expenses",
   },
   "Gifts & Donations": {
-    icon: "gift-outline" as const,
+    icon: "gift-outline",
     color: "#FF7043",
-    description: "Gifts, charity, donations",
+    defaultGoal: 3000,
+    description: "Presents and charitable contributions",
   },
   "Business Expenses": {
-    icon: "briefcase-outline" as const,
+    icon: "briefcase-outline",
     color: "#78909C",
-    description: "Office supplies, business travel",
+    defaultGoal: 20000,
+    description: "Office supplies and professional costs",
   },
   "Technology & Software": {
-    icon: "laptop" as const,
+    icon: "laptop",
     color: "#26A69A",
-    description: "Gadgets, software, subscriptions",
+    defaultGoal: 8000,
+    description: "Gadgets, apps, and software subscriptions",
   },
   "Income / Transfer In": {
-    icon: "cash-plus" as const,
+    icon: "cash-plus",
     color: "#4CAF50",
-    description: "Salary, transfers, income",
+    defaultGoal: 0,
+    description: "Salary, freelance, and incoming transfers",
   },
   "Transfer Out": {
-    icon: "bank-transfer-out" as const,
+    icon: "bank-transfer-out",
     color: "#F44336",
-    description: "Transfers, payments to others",
+    defaultGoal: 0,
+    description: "Money transfers to other accounts",
   },
 };
 
-// Define non-selectable categories (income/transfer related)
 const NON_SELECTABLE_CATEGORIES = ["Income / Transfer In", "Transfer Out"];
 
 type Category = {
@@ -145,7 +169,7 @@ export default function CategoriesScreen() {
     if (searchQuery.trim() === "") {
       setFilteredCategories(categories);
     } else {
-      const filtered = categories.filter(cat =>
+      const filtered = categories.filter((cat) =>
         cat.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredCategories(filtered);
@@ -160,27 +184,29 @@ export default function CategoriesScreen() {
         return;
       }
 
-      // Fetch user data
       const userSnap = await getDoc(doc(db, "users", user.uid));
       if (!userSnap.exists()) return;
 
       const data = userSnap.data();
       const selectedCategories = data?.preferredCategoryNames || [];
 
-      // Create categories list from all available categories
-      const allCategories = Object.entries(CATEGORY_CONFIG).map(([name, config]) => {
-        const isSelectable = !NON_SELECTABLE_CATEGORIES.includes(name);
-        const isSelected = isSelectable ? selectedCategories.includes(name) : false;
-        
-        return {
-          name,
-          isSelected,
-          icon: config.icon,
-          color: config.color,
-          description: config.description,
-          isSelectable,
-        };
-      });
+      const allCategories: Category[] = Object.entries(CATEGORY_CONFIG).map(
+        ([name, config]) => {
+          const isSelectable = !NON_SELECTABLE_CATEGORIES.includes(name);
+          const isSelected = isSelectable
+            ? selectedCategories.includes(name)
+            : false;
+
+          return {
+            name,
+            isSelected,
+            icon: config.icon,
+            color: config.color,
+            description: config.description,
+            isSelectable,
+          };
+        }
+      );
 
       setCategories(allCategories);
       setFilteredCategories(allCategories);
@@ -199,18 +225,18 @@ export default function CategoriesScreen() {
 
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
-      
+
       if (!userSnap.exists()) return;
 
       const data = userSnap.data();
       const currentCategories = data?.preferredCategoryNames || [];
-      
-      let updatedCategories;
+
+      let updatedCategories: string[];
       if (currentCategories.includes(categoryName)) {
-        // Remove category
-        updatedCategories = currentCategories.filter((cat: string) => cat !== categoryName);
+        updatedCategories = currentCategories.filter(
+          (cat: string) => cat !== categoryName
+        );
       } else {
-        // Add category
         updatedCategories = [...currentCategories, categoryName];
       }
 
@@ -219,16 +245,13 @@ export default function CategoriesScreen() {
         updatedAt: new Date().toISOString(),
       });
 
-      // Update local state
-      setCategories(prev =>
-        prev.map(cat =>
+      setCategories((prev) =>
+        prev.map((cat) =>
           cat.name === categoryName
             ? { ...cat, isSelected: !cat.isSelected }
             : cat
         )
       );
-
-      // Success alert removed - changes happen silently
     } catch (error) {
       console.error("Error updating categories:", error);
       Alert.alert("Error", "Failed to update category");
@@ -236,17 +259,19 @@ export default function CategoriesScreen() {
   };
 
   const handleEditGoal = (category: Category) => {
-    // Fetch actual goals from user data
     const fetchUserGoals = async () => {
       try {
         const user = auth.currentUser;
         if (!user) return;
-        
+
         const userSnap = await getDoc(doc(db, "users", user.uid));
         if (userSnap.exists()) {
           const data = userSnap.data();
           const userGoals = data?.goals || {};
-          const currentGoal = userGoals[category.name] || 0;
+          const currentGoal =
+            userGoals[category.name] ||
+            CATEGORY_CONFIG[category.name]?.defaultGoal ||
+            0;
           setEditingCategory(category);
           setNewGoalAmount(currentGoal.toString());
           setShowEditModal(true);
@@ -255,7 +280,7 @@ export default function CategoriesScreen() {
         console.error("Error fetching goals:", error);
       }
     };
-    
+
     fetchUserGoals();
   };
 
@@ -274,11 +299,11 @@ export default function CategoriesScreen() {
 
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
-      
+
       if (userSnap.exists()) {
         const currentData = userSnap.data();
         const currentGoals = currentData?.goals || {};
-        
+
         await updateDoc(userRef, {
           goals: {
             ...currentGoals,
@@ -286,7 +311,6 @@ export default function CategoriesScreen() {
           },
         });
 
-        // Success alert removed - changes happen silently
         setShowEditModal(false);
         setEditingCategory(null);
         setNewGoalAmount("");
@@ -298,18 +322,18 @@ export default function CategoriesScreen() {
   };
 
   const getSelectedCount = () => {
-    return categories.filter(cat => cat.isSelected && cat.isSelectable).length;
+    return categories.filter((cat) => cat.isSelected && cat.isSelectable).length;
   };
 
   const getSelectableCategoriesCount = () => {
-    return categories.filter(cat => cat.isSelectable).length;
+    return categories.filter((cat) => cat.isSelectable).length;
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <MaterialCommunityIcons name="loading" size={40} color="#4ADE80" />
+          <MaterialCommunityIcons name="loading" size={40} color="#10B981" />
           <Text style={styles.loadingText}>Loading categories...</Text>
         </View>
       </SafeAreaView>
@@ -322,37 +346,61 @@ export default function CategoriesScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
+        <Pressable
           onPress={() => router.back()}
-          style={styles.backButton}
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.buttonPressed,
+          ]}
         >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#E2E8F0" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Categories</Text>
-        <TouchableOpacity
+          <MaterialCommunityIcons
+            name="arrow-left"
+            size={24}
+            color="#10B981"
+          />
+        </Pressable>
+        <Text style={styles.headerTitle}>Manage Categories</Text>
+        <Pressable
           onPress={fetchCategories}
-          style={styles.refreshButton}
+          style={({ pressed }) => [
+            styles.refreshButton,
+            pressed && styles.buttonPressed,
+          ]}
         >
-          <MaterialCommunityIcons name="refresh" size={20} color="#4ADE80" />
-        </TouchableOpacity>
+          <MaterialCommunityIcons name="refresh" size={22} color="#10B981" />
+        </Pressable>
       </View>
 
       {/* Stats Overview */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <MaterialCommunityIcons name="checkbox-multiple-marked" size={24} color="#4ADE80" />
+          <View style={styles.statIconContainer}>
+            <MaterialCommunityIcons
+              name="check-circle"
+              size={28}
+              color="#10B981"
+            />
+          </View>
           <Text style={styles.statValue}>{getSelectedCount()}</Text>
-          <Text style={styles.statLabel}>Selected</Text>
+          <Text style={styles.statLabel}>Active</Text>
         </View>
-        <View style={styles.statDivider} />
+
         <View style={styles.statItem}>
-          <MaterialCommunityIcons name="format-list-bulleted" size={24} color="#45B7D1" />
+          <View style={styles.statIconContainer}>
+            <MaterialCommunityIcons name="grid" size={28} color="#34D399" />
+          </View>
           <Text style={styles.statValue}>{getSelectableCategoriesCount()}</Text>
-          <Text style={styles.statLabel}>Selectable</Text>
+          <Text style={styles.statLabel}>Available</Text>
         </View>
-        <View style={styles.statDivider} />
+
         <View style={styles.statItem}>
-          <MaterialCommunityIcons name="information-outline" size={24} color="#FFA726" />
+          <View style={styles.statIconContainer}>
+            <MaterialCommunityIcons
+              name="format-list-bulleted"
+              size={28}
+              color="#6EE7B7"
+            />
+          </View>
           <Text style={styles.statValue}>{categories.length}</Text>
           <Text style={styles.statLabel}>Total</Text>
         </View>
@@ -360,18 +408,22 @@ export default function CategoriesScreen() {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <MaterialCommunityIcons name="magnify" size={20} color="#666" />
+        <MaterialCommunityIcons name="magnify" size={22} color="#6B7280" />
         <TextInput
           style={styles.searchInput}
           placeholder="Search categories..."
-          placeholderTextColor="#666"
+          placeholderTextColor="#6B7280"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <MaterialCommunityIcons name="close-circle" size={20} color="#666" />
-          </TouchableOpacity>
+          <Pressable onPress={() => setSearchQuery("")}>
+            <MaterialCommunityIcons
+              name="close-circle"
+              size={22}
+              color="#6B7280"
+            />
+          </Pressable>
         )}
       </View>
 
@@ -380,61 +432,81 @@ export default function CategoriesScreen() {
         <View style={styles.categoriesList}>
           {filteredCategories.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="magnify-remove" size={60} color="#666" />
+              <MaterialCommunityIcons
+                name="folder-search-outline"
+                size={64}
+                color="#374151"
+              />
               <Text style={styles.emptyText}>No categories found</Text>
-              <Text style={styles.emptySubtext}>
-                Try a different search term
-              </Text>
+              <Text style={styles.emptySubtext}>Try adjusting your search</Text>
             </View>
           ) : (
             filteredCategories.map((category) => (
-              <View
+              <Pressable
                 key={category.name}
-                style={[
+                style={({ pressed }) => [
                   styles.categoryCard,
                   category.isSelected && styles.selectedCategoryCard,
                   !category.isSelectable && styles.nonSelectableCard,
+                  pressed && styles.categoryCardPressed,
                 ]}
+                onPress={() =>
+                  category.isSelectable &&
+                  toggleCategorySelection(category.name)
+                }
+                disabled={!category.isSelectable}
               >
                 <View style={styles.categoryHeader}>
                   <View
                     style={[
                       styles.categoryIconContainer,
-                      { backgroundColor: `${category.color}20` },
+                      {
+                        backgroundColor: category.isSelected
+                          ? `${category.color}25`
+                          : "#1F2937",
+                      },
                     ]}
                   >
                     <MaterialCommunityIcons
                       name={category.icon}
-                      size={24}
+                      size={26}
                       color={category.color}
                     />
                   </View>
+
                   <View style={styles.categoryInfo}>
                     <Text style={styles.categoryName}>{category.name}</Text>
-                    <Text style={styles.categoryDescription} numberOfLines={1}>
+                    <Text
+                      style={styles.categoryDescription}
+                      numberOfLines={1}
+                    >
                       {category.description}
                     </Text>
                   </View>
+
                   {category.isSelectable ? (
-                    <TouchableOpacity
+                    <View
                       style={[
                         styles.selectionToggle,
                         category.isSelected && styles.selectedToggle,
                       ]}
-                      onPress={() => toggleCategorySelection(category.name)}
                     >
                       <MaterialCommunityIcons
-                        name={category.isSelected ? "checkbox-marked" : "checkbox-blank-outline"}
-                        size={20}
-                        color={category.isSelected ? "#4ADE80" : "#666"}
+                        name={
+                          category.isSelected
+                            ? "check-circle"
+                            : "circle-outline"
+                        }
+                        size={26}
+                        color={category.isSelected ? "#10B981" : "#4B5563"}
                       />
-                    </TouchableOpacity>
+                    </View>
                   ) : (
                     <View style={styles.nonSelectableBadge}>
                       <MaterialCommunityIcons
-                        name="lock-outline"
-                        size={14}
-                        color="#666"
+                        name="lock"
+                        size={12}
+                        color="#6B7280"
                       />
                       <Text style={styles.nonSelectableText}>Auto</Text>
                     </View>
@@ -442,34 +514,50 @@ export default function CategoriesScreen() {
                 </View>
 
                 {category.isSelected && category.isSelectable && (
-                  <TouchableOpacity
-                    style={styles.editGoalButton}
-                    onPress={() => handleEditGoal(category)}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.editGoalButton,
+                      pressed && styles.editGoalButtonPressed,
+                    ]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleEditGoal(category);
+                    }}
                   >
                     <MaterialCommunityIcons
                       name="target"
-                      size={14}
-                      color="#666"
+                      size={16}
+                      color="#10B981"
                     />
                     <Text style={styles.editGoalText}>Set Monthly Goal</Text>
-                  </TouchableOpacity>
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={16}
+                      color="#6B7280"
+                    />
+                  </Pressable>
                 )}
-              </View>
+              </Pressable>
             ))
           )}
         </View>
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <MaterialCommunityIcons name="information-outline" size={24} color="#4ADE80" />
+          <View style={styles.infoIconContainer}>
+            <MaterialCommunityIcons
+              name="lightbulb-outline"
+              size={24}
+              color="#10B981"
+            />
+          </View>
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Managing Categories</Text>
+            <Text style={styles.infoTitle}>Quick Tips</Text>
             <Text style={styles.infoText}>
-              • Select expense categories you want to track
-              • Set monthly spending goals for selected categories
-              • Income/Transfer categories are automatically tracked
-              • Only selected categories appear in your dashboard
-              • You can change selections anytime
+              • Tap categories to enable/disable tracking{"\n"}
+              • Set monthly goals for better budgeting{"\n"}
+              • Auto categories track automatically{"\n"}
+              • Changes sync instantly across devices
             </Text>
           </View>
         </View>
@@ -479,26 +567,42 @@ export default function CategoriesScreen() {
       <Modal
         visible={showEditModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowEditModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowEditModal(false)}
+        >
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
             {editingCategory && (
               <>
                 <View style={styles.modalHeader}>
-                  <View style={styles.modalCategoryIcon}>
+                  <View
+                    style={[
+                      styles.modalCategoryIcon,
+                      { backgroundColor: `${editingCategory.color}20` },
+                    ]}
+                  >
                     <MaterialCommunityIcons
                       name={editingCategory.icon}
-                      size={24}
+                      size={28}
                       color={editingCategory.color}
                     />
                   </View>
-                  <Text style={styles.modalTitle}>{editingCategory.name}</Text>
+                  <View style={styles.modalHeaderText}>
+                    <Text style={styles.modalTitle}>
+                      {editingCategory.name}
+                    </Text>
+                    <Text style={styles.modalSubtitle}>
+                      Set Monthly Budget Goal
+                    </Text>
+                  </View>
                 </View>
 
-                <Text style={styles.modalSubtitle}>Set Monthly Goal</Text>
-                
                 <View style={styles.amountInputContainer}>
                   <Text style={styles.currencyLabel}>₹</Text>
                   <TextInput
@@ -507,29 +611,38 @@ export default function CategoriesScreen() {
                     onChangeText={setNewGoalAmount}
                     keyboardType="numeric"
                     placeholder="0"
-                    placeholderTextColor="#666"
+                    placeholderTextColor="#4B5563"
                     autoFocus
                   />
                 </View>
 
                 <View style={styles.quickAmounts}>
-                  <Text style={styles.quickAmountsLabel}>Quick Select:</Text>
+                  <Text style={styles.quickAmountsLabel}>Quick Select</Text>
                   <View style={styles.quickAmountsRow}>
                     {[1000, 2000, 5000, 10000, 15000].map((amount) => (
-                      <TouchableOpacity
+                      <Pressable
                         key={amount}
-                        style={styles.quickAmountButton}
+                        style={({ pressed }) => [
+                          styles.quickAmountButton,
+                          pressed && styles.quickAmountButtonPressed,
+                        ]}
                         onPress={() => setNewGoalAmount(amount.toString())}
                       >
-                        <Text style={styles.quickAmountText}>₹{amount}</Text>
-                      </TouchableOpacity>
+                        <Text style={styles.quickAmountText}>
+                          ₹{amount}
+                        </Text>
+                      </Pressable>
                     ))}
                   </View>
                 </View>
 
                 <View style={styles.modalButtons}>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.cancelButton]}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.modalButton,
+                      styles.cancelButton,
+                      pressed && styles.cancelButtonPressed,
+                    ]}
                     onPress={() => {
                       setShowEditModal(false);
                       setEditingCategory(null);
@@ -537,18 +650,27 @@ export default function CategoriesScreen() {
                     }}
                   >
                     <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.saveButton]}
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.modalButton,
+                      styles.saveButton,
+                      pressed && styles.saveButtonPressed,
+                    ]}
                     onPress={handleSaveGoal}
                   >
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={20}
+                      color="#000"
+                    />
                     <Text style={styles.saveButtonText}>Save Goal</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
               </>
             )}
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -557,291 +679,346 @@ export default function CategoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0D0D0D",
+    backgroundColor: "#000000",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    gap: 16,
   },
   loadingText: {
-    color: "#666",
-    marginTop: 12,
+    color: "#9CA3AF",
     fontSize: 16,
+    fontWeight: "500",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#1A1C1A",
+    borderBottomColor: "#1F2937",
   },
   backButton: {
-    padding: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#0F172A",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#1F2937",
   },
   headerTitle: {
-    color: "#E2E8F0",
-    fontSize: 18,
-    fontWeight: "600",
+    color: "#F9FAFB",
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   refreshButton: {
-    padding: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#0F172A",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  buttonPressed: {
+    backgroundColor: "#1F2937",
+    transform: [{ scale: 0.96 }],
   },
   statsContainer: {
     flexDirection: "row",
-    backgroundColor: "#1A1C1A",
-    margin: 16,
-    padding: 16,
-    borderRadius: 16,
+    margin: 20,
+    padding: 20,
+    backgroundColor: "#0F172A",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
-    alignItems: "center",
-    justifyContent: "space-between",
+    borderColor: "#1F2937",
+    gap: 16,
   },
   statItem: {
-    alignItems: "center",
     flex: 1,
+    alignItems: "center",
+    gap: 8,
   },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: "#2D2F2D",
+  statIconContainer: {
+    marginBottom: 4,
   },
   statValue: {
-    color: "#E2E8F0",
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 4,
+    color: "#F9FAFB",
+    fontSize: 24,
+    fontWeight: "700",
   },
   statLabel: {
-    color: "#666",
-    fontSize: 10,
-    marginTop: 2,
+    color: "#9CA3AF",
+    fontSize: 12,
+    fontWeight: "500",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1A1C1A",
-    marginHorizontal: 16,
-    marginBottom: 16,
+    backgroundColor: "#0F172A",
+    marginHorizontal: 20,
+    marginBottom: 20,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1F2937",
+    gap: 12,
   },
   searchInput: {
     flex: 1,
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 16,
-    marginLeft: 12,
+    fontWeight: "500",
     padding: 0,
   },
   categoriesList: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    gap: 12,
   },
   emptyState: {
     alignItems: "center",
-    paddingVertical: 60,
+    paddingVertical: 80,
+    gap: 12,
   },
   emptyText: {
-    color: "#666",
-    fontSize: 16,
-    marginTop: 12,
+    color: "#9CA3AF",
+    fontSize: 18,
+    fontWeight: "600",
   },
   emptySubtext: {
-    color: "#666",
-    fontSize: 12,
-    marginTop: 4,
+    color: "#6B7280",
+    fontSize: 14,
   },
   categoryCard: {
-    backgroundColor: "#1A1C1A",
+    backgroundColor: "#0F172A",
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1F2937",
   },
   selectedCategoryCard: {
-    backgroundColor: "#1A2C1A",
-    borderColor: "#2D3E2D",
+    backgroundColor: "#0A2E1C",
+    borderColor: "#10B981",
+    borderWidth: 2,
   },
   nonSelectableCard: {
-    backgroundColor: "#1A1A1A",
-    borderColor: "#2D2D2D",
-    opacity: 0.7,
+    backgroundColor: "#0A0A0A",
+    borderColor: "#1F2937",
+    opacity: 0.6,
+  },
+  categoryCardPressed: {
+    transform: [{ scale: 0.98 }],
   },
   categoryHeader: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 14,
   },
   categoryIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
   categoryInfo: {
     flex: 1,
+    gap: 4,
   },
   categoryName: {
-    color: "#E2E8F0",
+    color: "#F9FAFB",
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 2,
+    letterSpacing: 0.2,
   },
   categoryDescription: {
-    color: "#666",
-    fontSize: 12,
+    color: "#9CA3AF",
+    fontSize: 13,
+    fontWeight: "400",
   },
   selectionToggle: {
     padding: 4,
   },
-  selectedToggle: {
-    // Additional styles for selected state if needed
-  },
+  selectedToggle: {},
   nonSelectableBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2D2F2D",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: "#1F2937",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
   },
   nonSelectableText: {
-    color: "#666",
-    fontSize: 10,
+    color: "#9CA3AF",
+    fontSize: 11,
     fontWeight: "600",
-    marginLeft: 4,
+    letterSpacing: 0.5,
   },
   editGoalButton: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: "#2D2F2D",
-    borderRadius: 8,
-    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "#1F2937",
+    borderRadius: 10,
+    marginTop: 14,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#374151",
+  },
+  editGoalButtonPressed: {
+    backgroundColor: "#374151",
+    transform: [{ scale: 0.97 }],
   },
   editGoalText: {
-    color: "#666",
-    fontSize: 11,
+    color: "#10B981",
+    fontSize: 13,
     fontWeight: "600",
-    marginLeft: 4,
+    flex: 1,
   },
   infoCard: {
     flexDirection: "row",
-    backgroundColor: "#1A2C1A",
-    marginHorizontal: 16,
-    marginBottom: 20,
-    padding: 16,
+    backgroundColor: "#0A2E1C",
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#2D3E2D",
+    borderColor: "#10B981",
+    gap: 16,
   },
-  infoContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  infoTitle: {
-    color: "#A7F3A0",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 6,
-  },
-  infoText: {
-    color: "#A7F3A0",
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+  infoIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "#10B98115",
     justifyContent: "center",
     alignItems: "center",
   },
+  infoContent: {
+    flex: 1,
+    gap: 8,
+  },
+  infoTitle: {
+    color: "#10B981",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  infoText: {
+    color: "#6EE7B7",
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "400",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
   modalContent: {
-    backgroundColor: "#1A1C1A",
-    width: "90%",
-    padding: 24,
-    borderRadius: 16,
+    backgroundColor: "#0F172A",
+    width: "100%",
+    maxWidth: 400,
+    padding: 28,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#2D2F2D",
+    borderColor: "#1F2937",
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 28,
+    gap: 16,
   },
   modalCategoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#2D2F2D",
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+  },
+  modalHeaderText: {
+    flex: 1,
+    gap: 4,
   },
   modalTitle: {
-    color: "#E2E8F0",
-    fontSize: 18,
-    fontWeight: "bold",
-    flex: 1,
+    color: "#F9FAFB",
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   modalSubtitle: {
-    color: "#666",
+    color: "#9CA3AF",
     fontSize: 14,
-    marginBottom: 16,
+    fontWeight: "500",
   },
   amountInputContainer: {
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 2,
-    borderBottomColor: "#4ADE80",
-    paddingBottom: 12,
-    marginBottom: 20,
+    borderBottomColor: "#10B981",
+    paddingBottom: 16,
+    marginBottom: 28,
+    gap: 8,
   },
   currencyLabel: {
-    color: "#E2E8F0",
-    fontSize: 32,
-    fontWeight: "bold",
-    marginRight: 8,
+    color: "#10B981",
+    fontSize: 36,
+    fontWeight: "700",
   },
   modalInput: {
     flex: 1,
-    color: "#E2E8F0",
-    fontSize: 32,
-    fontWeight: "bold",
+    color: "#F9FAFB",
+    fontSize: 36,
+    fontWeight: "700",
     padding: 0,
   },
   quickAmounts: {
-    marginBottom: 24,
+    marginBottom: 28,
+    gap: 12,
   },
   quickAmountsLabel: {
-    color: "#666",
-    fontSize: 12,
-    marginBottom: 8,
+    color: "#9CA3AF",
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.5,
   },
   quickAmountsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   quickAmountButton: {
-    backgroundColor: "#2D2F2D",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: "#1F2937",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#374151",
+  },
+  quickAmountButtonPressed: {
+    backgroundColor: "#10B981",
+    borderColor: "#10B981",
   },
   quickAmountText: {
-    color: "#E2E8F0",
-    fontSize: 12,
+    color: "#F9FAFB",
+    fontSize: 13,
+    fontWeight: "600",
   },
   modalButtons: {
     flexDirection: "row",
@@ -850,23 +1027,31 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
   },
   cancelButton: {
-    backgroundColor: "#2D2F2D",
+    backgroundColor: "#1F2937",
+    borderWidth: 1,
+    borderColor: "#374151",
+  },
+  cancelButtonPressed: {
+    backgroundColor: "#374151",
   },
   saveButton: {
-    backgroundColor: "#4ADE80",
+    backgroundColor: "#10B981",
+  },
+  saveButtonPressed: {
+    backgroundColor: "#059669",
   },
   cancelButtonText: {
-    color: "#E2E8F0",
-    fontSize: 16,
-    fontWeight: "600",
+    color: "#9CA3AF",
   },
   saveButtonText: {
-    color: "#0D0D0D",
-    fontSize: 16,
-    fontWeight: "bold",
+    color: "#000",
+    fontWeight: "700",
   },
 });
