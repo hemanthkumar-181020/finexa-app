@@ -211,7 +211,7 @@ export default function GoalsScreen() {
 
       const data = userSnap.data();
       const categories = data?.preferredCategoryNames || [];
-      const income = data?.monthlyIncome || 0;
+      const income = data?.monthlySpendingLimit||0;
       const fetchedUserGoals = data?.goals || {};
 
       setMonthlyIncome(income);
@@ -294,7 +294,7 @@ export default function GoalsScreen() {
       if (!user) return;
 
       await updateDoc(doc(db, "users", user.uid), {
-        monthlyIncome: income,
+        monthlySpendingLimit: income,
       });
 
       setMonthlyIncome(income);
@@ -463,7 +463,7 @@ export default function GoalsScreen() {
         <View style={styles.incomeCard}>
           <View style={styles.incomeHeader}>
             <MaterialCommunityIcons name="cash-multiple" size={24} color="#4ADE80" />
-            <Text style={styles.incomeTitle}>Monthly Income</Text>
+            <Text style={styles.incomeTitle}>Monthly Spending limit</Text>
             <TouchableOpacity
               onPress={() => {
                 setNewIncome(monthlyIncome.toString());
