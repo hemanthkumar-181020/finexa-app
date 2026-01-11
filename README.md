@@ -6,6 +6,8 @@
 ![Expo](https://img.shields.io/badge/Expo-1B1F23?style=for-the-badge&logo=expo&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 
 A modern, cross-platform mobile application for comprehensive personal finance management.
 
@@ -31,13 +33,13 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 - Monthly/Weekly spending analysis
 
 ### 🏦 Bank PDF Processing
-- **SBI Bank PDF processing** - FastAPI service with UTR extraction
-- **PhonePe PDF processing** - FastAPI service with UTR-based deduplication
-- **pdfplumber & regex** - Advanced text extraction from PDFs
+- **SBI Bank PDF processing** - FastAPI + Python service with UTR extraction
+- **PhonePe PDF processing** - FastAPI + Python service with UTR-based deduplication
+- **pdfplumber & regex** - Advanced Python text extraction from PDFs
 - **UTR as primary key** - Unique transaction identification across all services
 
 ### 📈 ML-Powered Features
-- Spending predictions using machine learning models
+- Spending predictions using Python machine learning models
 - Smart budget recommendations based on spending patterns
 - Transaction categorization
 
@@ -56,7 +58,7 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 └─────────────────────┬───────────────────┘
                       │ (Send to API)
 ┌─────────────────────▼───────────────────┐
-│        FastAPI PDF Services             │
+│        FastAPI Python Services          │
 │  ┌─────────────────────────────┐        │
 │  │ 1. Extract text (pdfplumber)│        │
 │  │ 2. Find UTRs (regex)        │        │
@@ -75,18 +77,40 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 └─────────────────────────────────────────┘
 ```
 
-### External Services (All using UTR as key)
+## 🛠️ Tech Stack
 
-| Service | Purpose | Repository | Deployment |
-|---------|---------|------------|------------|
-| **SBI PDF Extractor** | Process SBI bank statements with UTR extraction | [github.com/reddy1307/sbi-pdf-extract](https://github.com/reddy1307/sbi-pdf-extract) | Vercel |
-| **PhonePe PDF Extractor** | Process PhonePe statements with UTR-based parsing | [github.com/reddy1307/PDF-EXTRACT](https://github.com/reddy1307/PDF-EXTRACT) | Vercel |
-| **Spending Predict API** | ML-based spending predictions using UTR-linked data | [github.com/reddy1307/spending-predict-api](https://github.com/reddy1307/spending-predict-api) | Render |
+### Frontend (Mobile App)
+- **React Native** - Mobile app framework
+- **Expo** - Development platform
+- **TypeScript** - Type-safe JavaScript
+- **Expo Router** - File-based navigation
+- **React Context API** - Global state management
+
+### Backend Services (Python + FastAPI)
+- **FastAPI** - High-performance Python API framework for all external services
+- **Python** - Primary language for PDF processing and ML models
+- **pdfplumber** - Python library for PDF text extraction
+- **Regex Patterns** - Python regex for UTR and transaction data extraction
+- **ML Libraries** - Python scikit-learn/pandas for spending predictions
+
+### Database & Storage
+- **Firebase Authentication** - User management
+- **Firebase Firestore** - Transaction storage with UTR indexing
+- **Firebase Storage** - PDF file storage
+
+### External Python Services
+
+| Service | Technology | Purpose | Repository |
+|---------|------------|---------|------------|
+| **SBI PDF Extractor** | FastAPI + Python + pdfplumber | Process SBI bank statements with UTR extraction | [github.com/reddy1307/sbi-pdf-extract](https://github.com/reddy1307/sbi-pdf-extract) |
+| **PhonePe PDF Extractor** | FastAPI + Python + regex | Process PhonePe statements with UTR-based parsing | [github.com/reddy1307/PDF-EXTRACT](https://github.com/reddy1307/PDF-EXTRACT) |
+| **Spending Predict API** | FastAPI + Python + ML models | ML-based spending predictions using UTR-linked data | [github.com/reddy1307/spending-predict-api](https://github.com/reddy1307/spending-predict-api) |
 
 ## 🚀 Installation
 
 ### Prerequisites
-- Node.js (v18 or newer)
+- Node.js (v18 or newer) - for React Native frontend
+- Python 3.9+ - for backend services (already deployed)
 - npm or yarn
 - Expo CLI (`npm install -g expo-cli`)
 - iOS Simulator (macOS) or Android Studio Emulator
@@ -115,7 +139,7 @@ A modern, cross-platform mobile application for comprehensive personal finance m
    EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
    EXPO_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
 
-   # External API Services
+   # External Python FastAPI Services
    EXPO_PUBLIC_SBI_API_URL=https://sbi-pdf-extract.vercel.app/api
    EXPO_PUBLIC_PHONEPE_API_URL=https://pdf-extract.vercel.app/api
    EXPO_PUBLIC_PREDICTION_API_URL=https://spending-predict-api.onrender.com/api
@@ -204,11 +228,13 @@ npx eas submit --platform android   # Submit to Play Store
 - [React Native Docs](https://reactnative.dev/docs/getting-started)
 - [Firebase Documentation](https://firebase.google.com/docs)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Python Documentation](https://docs.python.org/3/)
 
-### External Service Repositories:
-- [SBI PDF Extractor](https://github.com/reddy1307/sbi-pdf-extract)
-- [PhonePe PDF Extractor](https://github.com/reddy1307/PDF-EXTRACT)
-- [Spending Predict API (ML Models)](https://github.com/reddy1307/spending-predict-api)
+### External Python FastAPI Services:
+- [SBI PDF Extractor (Python + FastAPI)](https://github.com/reddy1307/sbi-pdf-extract)
+- [PhonePe PDF Extractor (Python + FastAPI)](https://github.com/reddy1307/PDF-EXTRACT)
+- [Spending Predict API (Python + FastAPI + ML)](https://github.com/reddy1307/spending-predict-api)
 
 ---
 
