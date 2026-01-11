@@ -17,6 +17,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAuth } from "firebase/auth";
 import { saveManualTransactionToFirestore, saveTransactionsToFirestore } from "../../services/firestoreTransactions";
 
+
+
 const CATEGORIES = [
   "Income / Transfer In",
 
@@ -140,6 +142,7 @@ export default function ConfirmSMS() {
   };
 
   return (
+    
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
