@@ -1275,6 +1275,7 @@ iconButtonActive: {
     fontWeight: "600",
   },
 
+  
   /* ADD TRANSACTION BUTTON */
   addButton: {
     position: "absolute",

@@ -71,7 +71,7 @@ const RemindersIndex = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={26} color="#22d3ee" />
+          <Ionicons name="arrow-back" size={26} color="#22c55e" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Reminders</Text>
         <View style={{ width: 26 }} />
@@ -106,7 +106,7 @@ const RemindersIndex = () => {
                       })
                     }
                   >
-                    <Ionicons name="create-outline" size={22} color="#22d3ee" />
+                    <Ionicons name="create-outline" size={22} color="#22c55e" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => deleteReminder(item.id)}>
                     <Ionicons name="trash-outline" size={22} color="#ef4444" />
@@ -146,6 +146,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#22d3ee30",
+    paddingTop:12,
   },
   headerTitle: {
     flex: 1,

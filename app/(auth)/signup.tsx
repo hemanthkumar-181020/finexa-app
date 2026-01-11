@@ -421,16 +421,6 @@ export default function Signup() {
                 </Link>
               </View>    
                 
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or continue with</Text>
-                <View style={styles.dividerLine} />
-              </View> 
-
-              <TouchableOpacity style={styles.google_button} activeOpacity={0.9}>
-                <GoogleLogo />
-                <Text style={styles.google_buttonText}>Continue with Google</Text>
-              </TouchableOpacity>
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -443,6 +433,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+    paddingTop:32,
   },
   safeArea: {
     flex: 1,
