@@ -1,50 +1,83 @@
-# Welcome to your Expo app 👋
+# Finexa - Personal Finance Tracker 📱💰
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+<div align="center">
 
-## Get started
+![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Expo](https://img.shields.io/badge/Expo-1B1F23?style=for-the-badge&logo=expo&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
 
-1. Install dependencies
+A modern, cross-platform mobile application for comprehensive personal finance management.
 
+[Features](#features) | [Installation](#installation) | [Project Structure](#project-structure) | [Contributors](#contributors)
+
+</div>
+
+## ✨ Features
+
+### 🔐 **Authentication & Security**
+- Secure user registration and login with Firebase Authentication
+- Email verification and password reset functionality
+- Secure token management and session persistence
+
+### 💳 **Transaction Management**
+- Add, edit, and delete income/expense transactions
+- Categorized transaction tracking (Food, Transportation, Entertainment, etc.)
+- Real-time transaction updates with Firestore
+- Local storage fallback for offline access
+
+### 📊 **Financial Visualization**
+- **Expense Pie Charts** - Visual breakdown of spending by category
+- **Spending Heatmaps** - Track spending patterns over time
+- **Financial Dashboard** - At-a-glance overview of your finances
+- Monthly/Weekly spending analysis
+
+### 🏦 **Bank Integration**
+- SBI Bank API integration
+- PhonePe payment integration
+- Support for multiple bank accounts
+- Secure transaction synchronization
+
+### 📱 **User Experience**
+- Clean, modern design with intuitive navigation
+- Tab-based navigation system
+- Responsive layout for all device sizes
+- File-based routing with Expo Router
+
+## 🛠️ Tech Stack
+
+### **Frontend**
+- **React Native** - Mobile app framework
+- **Expo** - Development platform
+- **TypeScript** - Type-safe JavaScript
+- **Expo Router** - File-based navigation
+
+### **Backend Services**
+- **Firebase Authentication** - User management
+- **Cloud Firestore** - Real-time database
+- **Firebase Storage** - File storage
+
+### **State Management**
+- **React Context API** - Global state management
+- **Custom Hooks** - Reusable logic
+- **Local Storage** - Offline data persistence
+
+### **Development Tools**
+- **ESLint** - Code linting
+- **Expo Application Services (EAS)** - Build services
+- **Git** - Version control
+
+## 🚀 Installation
+
+### Prerequisites
+- Node.js (v18 or newer)
+- npm or yarn
+- Expo CLI (`npm install -g expo-cli`)
+- iOS Simulator (macOS) or Android Studio Emulator
+
+### Setup Instructions
+
+1. **Clone the repository**
    ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+   git clone https://github.com/hemanthkumar-181020/finexa-app.git
+   cd finexa-app
