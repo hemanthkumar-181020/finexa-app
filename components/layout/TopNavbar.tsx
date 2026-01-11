@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     height: "70%",
   },
   appName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "900",
     color: "#FFFFFF",
     letterSpacing: 3,
