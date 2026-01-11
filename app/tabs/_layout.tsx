@@ -10,8 +10,9 @@ NavigationBar.setVisibilityAsync("hidden");
 
 const brandLogos = [
   require("../../assets/images/phonepe.png"),
+  require("../../assets/images/message.png"),
+  require("../../assets/images/yono1.png"),
   require("../../assets/images/icici.png"),
-  require("../../assets/images/yono.png"),
 ];
 
 function RotatingBrandIcon() {

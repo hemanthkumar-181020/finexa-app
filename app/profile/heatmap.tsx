@@ -635,19 +635,20 @@ export default function HeatmapScreen() {
 
 /* ============== styles: dark fintech theme + weekly chart ============== */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F1113' },
+  container: { flex: 1, backgroundColor: '#000000',paddingTop:12, },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#0F1113',
+    padding: 20,
   },
 
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 30,
   },
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
 
@@ -666,7 +667,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   statCard: {
     flex: 1,
-    backgroundColor: '#1A1C1E',
+    backgroundColor: '#020817',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
@@ -768,7 +769,7 @@ const styles = StyleSheet.create({
   legendText: { color: '#9CA3AF', fontSize: 12 },
 
   detailCard: {
-    backgroundColor: '#1A1C1E',
+    backgroundColor: '#020817',
     borderRadius: 28,
     padding: 20,
     marginTop: 25,
@@ -791,7 +792,16 @@ const styles = StyleSheet.create({
   },
   onTrackText: { color: '#10B981', fontSize: 10, fontWeight: '700' },
 
-  txItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  txItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 16,
+    backgroundColor:'#000000',
+    borderWidth:1,
+    borderColor: "#1E293B",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,},
   iconCircle: {
     width: 40,
     height: 40,

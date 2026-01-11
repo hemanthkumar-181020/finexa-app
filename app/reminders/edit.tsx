@@ -62,7 +62,7 @@ const EditReminder = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={26} color="#22d3ee" />
+          <Ionicons name="arrow-back" size={26} color="#22c55e" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Reminder</Text>
         <View style={{ width: 26 }} />
@@ -82,7 +82,7 @@ const EditReminder = () => {
           style={styles.input}
           onPress={() => setShowDate(true)}
         >
-          <Ionicons name="calendar-outline" size={20} color="#22d3ee" />
+          <Ionicons name="calendar-outline" size={20} color="#22c55e" />
           <Text style={styles.value}>{date.toDateString()}</Text>
         </TouchableOpacity>
 
@@ -92,7 +92,7 @@ const EditReminder = () => {
           style={styles.input}
           onPress={() => setShowTime(true)}
         >
-          <Ionicons name="time-outline" size={20} color="#22d3ee" />
+          <Ionicons name="time-outline" size={20} color="#22c55e" />
           <Text style={styles.value}>
             {date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </Text>
@@ -153,7 +153,7 @@ const EditReminder = () => {
 export default EditReminder;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#000" },
+  safe: { flex: 1, backgroundColor: "#000",paddingTop:12, },
   header: {
     flexDirection: "row",
     alignItems: "center",

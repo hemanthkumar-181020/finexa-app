@@ -255,18 +255,6 @@ useEffect(() => {
                   </Animated.View>
                 </TouchableOpacity>
 
-                {/* Divider */}
-                <View style={styles.dividerContainer}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>Or, login with</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                {/* Google Login */}
-                <TouchableOpacity style={styles.googleButton} disabled={!request} onPress={() => promptAsync()}>
-                  <GoogleLogo />
-                  <Text style={styles.googleButtonText}>Continue with Google</Text>
-                </TouchableOpacity>
 
                 {/* Footer */}
                 <View style={styles.footer}>

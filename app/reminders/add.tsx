@@ -40,8 +40,12 @@ export default function AddReminder() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>New Reminder</Text>
-
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={26} color="#22c55e" />
+        </TouchableOpacity>
+        <Text style={styles.headertext}>New Reminder</Text>
+      </View>
       {/* Title */}
       <Text style={styles.label}>Title</Text>
       <TextInput
@@ -54,7 +58,7 @@ export default function AddReminder() {
 
       {/* Date Picker */}
       <TouchableOpacity style={styles.card} onPress={() => setShowDate(true)}>
-        <Ionicons name="calendar-outline" size={22} color="#22d3ee" />
+        <Ionicons name="calendar-outline" size={22} color="#22c55e" />
         <Text style={styles.cardText}>{date.toDateString()}</Text>
       </TouchableOpacity>
 
@@ -134,10 +138,18 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    fontSize: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#22d3ee30",
+  },
+  headertext: {
+    fontSize: 24,
     fontWeight: "700",
-    color: "#22d3ee",
-    marginBottom: 25,
+    color: "#22c55e",
+    marginLeft:30,
   },
   label: {
     color: "#9ca3af",
