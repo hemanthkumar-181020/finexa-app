@@ -141,27 +141,6 @@ npx eas submit --platform ios       # Submit to App Store
 npx eas submit --platform android   # Submit to Play Store
 ```
 
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/AmazingFeature`
-3. Commit your changes: `git commit -m 'Add some AmazingFeature'`
-4. Push to the branch: `git push origin feature/AmazingFeature`
-5. Open a Pull Request
-
-### Development Guidelines
-- Follow TypeScript best practices
-- Use functional components with hooks
-- Write meaningful commit messages
-- Test on both iOS and Android
-- Update documentation as needed
-
-## 👥 Contributors
-
-Thanks to these wonderful contributors:
-
 <table>
   <tr>
     <td align="center">
@@ -170,8 +149,6 @@ Thanks to these wonderful contributors:
         <br />
         <sub><b>Hemanth Kumar</b></sub>
       </a>
-      <br />
-      Project Owner & Maintainer
     </td>
     <td align="center">
       <a href="https://github.com/reddy1307">
@@ -179,8 +156,6 @@ Thanks to these wonderful contributors:
         <br />
         <sub><b>Santhosh Reddy</b></sub>
       </a>
-      <br />
-      UI/UX Development
     </td>
     <td align="center">
       <a href="https://github.com/Preethamchegu">
@@ -188,15 +163,10 @@ Thanks to these wonderful contributors:
         <br />
         <sub><b>Preetham Chegu</b></sub>
       </a>
-      <br />
-      Feature Development
     </td>
   </tr>
 </table>
 
-## 📄 License
-
-This project is currently not licensed for public use. All rights reserved.
 
 ## 🔗 Useful Links
 
@@ -205,15 +175,7 @@ This project is currently not licensed for public use. All rights reserved.
 - [Firebase Documentation](https://firebase.google.com/docs)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 
-## 🙏 Acknowledgments
 
-- [Expo Team](https://expo.dev/) for the amazing development platform
-- [Firebase Team](https://firebase.google.com/) for backend services
-- All contributors and testers
-
-## 📞 Support
-
-For support, please open an issue in the GitHub repository.
 
 ---
 
