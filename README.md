@@ -140,7 +140,7 @@ npx eas build --platform ios        # Build for iOS
 npx eas submit --platform ios       # Submit to App Store
 npx eas submit --platform android   # Submit to Play Store
 ```
-
+## Contributors
 <table>
   <tr>
     <td align="center">
