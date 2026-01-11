@@ -67,9 +67,9 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 
 | Service | Purpose | Repository | Deployment |
 |---------|---------|------------|------------|
-| **SBI PDF Extractor** | Process SBI bank statements | [github.com/reddy1307/sbi-pdf-extract](https://github.com/reddy1307/sbi-pdf-extract) | Vercel/Render |
-| **PhonePe PDF Extractor** | Process PhonePe statements | [github.com/reddy1307/PDF-EXTRACT](https://github.com/reddy1307/PDF-EXTRACT) | Vercel/Render |
-| **Spending Predict API** | AI spending predictions | [github.com/reddy1307/spending-predict-api](https://github.com/reddy1307/spending-predict-api) | Vercel/Render |
+| **SBI PDF Extractor** | Process SBI bank statements | [github.com/reddy1307/sbi-pdf-extract](https://github.com/reddy1307/sbi-pdf-extract) | Vercel |
+| **PhonePe PDF Extractor** | Process PhonePe statements | [github.com/reddy1307/PDF-EXTRACT](https://github.com/reddy1307/PDF-EXTRACT) | Vercel |
+| **Spending Predict API** | AI spending predictions | [github.com/reddy1307/spending-predict-api](https://github.com/reddy1307/spending-predict-api) | Render |
 
 ### Data Flow Diagram
 ```
