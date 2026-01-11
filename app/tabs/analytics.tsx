@@ -1,626 +1,1102 @@
-import { useEffect, useState } from "react";
+// app/tabs/analytics.tsx
+import React, { useState } from "react";
 import {
   View,
+  StyleSheet,
+  SafeAreaView,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
+  StatusBar,
   ScrollView,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
   Dimensions,
-  StyleSheet
 } from "react-native";
-
-import { collection, getDocs } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "../../services/firebase";
-
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { PieChart } from "react-native-chart-kit";
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from "expo-linear-gradient";
+
+import { useSpendingPredictions } from "../../hooks/useSpendingPredictions";
+import {
+  CATEGORY_GRADIENTS,
+  getCategoryGradient,
+} from "../../constants/categoryGradients";
+import { Colors } from "../../constants/theme";
 
 const screenWidth = Dimensions.get("window").width - 32;
 
-const chartConfig = {
-  backgroundGradientFrom: "#000",
-  backgroundGradientTo: "#000",
-  decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-  labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+type ChartType = "Bar" | "Pie";
+
+type CategoryConfig = {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  color: string;
+  defaultGoal: number;
+  description: string;
 };
 
-export default function SpendingPredictionPage() {
-  const [loading, setLoading] = useState(false);
-  const [predictions, setPredictions] = useState<any[]>([]);
-  const [selectedDays, setSelectedDays] = useState(7);
-  const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [hasTransactions, setHasTransactions] = useState(false);
-  const [selectedChart, setSelectedChart] = useState<"Bar" | "Pie">("Bar");
+const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
+  "Food & Dining": {
+    icon: "silverware-fork-knife",
+    color: "#FF6B6B",
+    defaultGoal: 10000,
+    description: "Restaurants, cafes, and food deliveries",
+  },
+  Groceries: {
+    icon: "cart-outline",
+    color: "#4ECDC4",
+    defaultGoal: 8000,
+    description: "Supermarket and grocery shopping",
+  },
+  Travel: {
+    icon: "airplane",
+    color: "#45B7D1",
+    defaultGoal: 15000,
+    description: "Flights, trains, hotels, and cab rides",
+  },
+  Fuel: {
+    icon: "gas-station",
+    color: "#FFA726",
+    defaultGoal: 5000,
+    description: "Petrol, diesel, and gas station expenses",
+  },
+  Shopping: {
+    icon: "shopping-outline",
+    color: "#AB47BC",
+    defaultGoal: 12000,
+    description: "Clothing, electronics, and retail purchases",
+  },
+  Entertainment: {
+    icon: "movie-open-outline",
+    color: "#5C6BC0",
+    defaultGoal: 6000,
+    description: "Movies, concerts, and streaming services",
+  },
+  Utilities: {
+    icon: "lightning-bolt-outline",
+    color: "#FFEE58",
+    defaultGoal: 7000,
+    description: "Electricity, water, and internet bills",
+  },
+  Recharge: {
+    icon: "cellphone",
+    color: "#26C6DA",
+    defaultGoal: 2000,
+    description: "Mobile recharges and data packs",
+  },
+  Healthcare: {
+    icon: "hospital-box-outline",
+    color: "#EF5350",
+    defaultGoal: 5000,
+    description: "Medicines, doctor visits, and hospital bills",
+  },
+  Education: {
+    icon: "school-outline",
+    color: "#7E57C2",
+    defaultGoal: 10000,
+    description: "Tuition fees, books, and courses",
+  },
+  "Personal Care": {
+    icon: "face-woman-shimmer-outline",
+    color: "#EC407A",
+    defaultGoal: 4000,
+    description: "Salon, spa, and grooming services",
+  },
+  "Home & Kitchen": {
+    icon: "home-outline",
+    color: "#66BB6A",
+    defaultGoal: 9000,
+    description: "Home appliances and kitchen supplies",
+  },
+  "Vehicle Maintenance": {
+    icon: "car-wrench",
+    color: "#8D6E63",
+    defaultGoal: 3000,
+    description: "Car servicing and repairs",
+  },
+  "Hobbies & Leisure": {
+    icon: "soccer",
+    color: "#29B6F6",
+    defaultGoal: 4000,
+    description: "Sports, books, and hobby expenses",
+  },
+  "Gifts & Donations": {
+    icon: "gift-outline",
+    color: "#FF7043",
+    defaultGoal: 3000,
+    description: "Presents and charitable contributions",
+  },
+  "Business Expenses": {
+    icon: "briefcase-outline",
+    color: "#78909C",
+    defaultGoal: 20000,
+    description: "Office supplies and professional costs",
+  },
+  "Technology & Software": {
+    icon: "laptop",
+    color: "#26A69A",
+    defaultGoal: 8000,
+    description: "Gadgets, apps, and software subscriptions",
+  },
+  "Income / Transfer In": {
+    icon: "cash-plus",
+    color: "#4CAF50",
+    defaultGoal: 0,
+    description: "Salary, freelance, and incoming transfers",
+  },
+  "Transfer Out": {
+    icon: "bank-transfer-out",
+    color: "#F44336",
+    defaultGoal: 0,
+    description: "Money transfers to other accounts",
+  },
+};
 
-  // Gradient colors for all categories [dark, light]
-  const categoryGradients: Record<string, readonly [string, string]> = {
-    // Income/Transfer
-    "Income / Transfer In": ["#059669", "#10B981"], // Emerald Green
-    
-    // Core Expenses
-    "Recharge": ["#3B82F6", "#60A5FA"], // Blue
-    "Food & Dining": ["#EF4444", "#F87171"], // Red
-    "Fuel": ["#F59E0B", "#FBBF24"], // Amber
-    "Shopping": ["#8B5CF6", "#A78BFA"], // Purple
-    "Groceries": ["#EC4899", "#F472B6"], // Pink
-    "Travel": ["#06B6D4", "#22D3EE"], // Cyan
-    "Entertainment": ["#F97316", "#FB923C"], // Orange
-    "Utilities": ["#84CC16", "#A3E635"], // Lime Green
-    "Education": ["#6366F1", "#818CF8"], // Indigo
-    "Healthcare": ["#DC2626", "#EF4444"], // Dark Red
-    "Banking & Finance": ["#0EA5E9", "#38BDF8"], // Sky Blue
-    "Transfer Out": ["#6B7280", "#9CA3AF"], // Gray
-    
-    // Extended Coverage
-    "Personal Care": ["#A855F7", "#C084FC"], // Light Purple
-    "Home & Kitchen": ["#FACC15", "#FDE047"], // Yellow
-    "Gifts & Donations": ["#E11D48", "#F43F5E"], // Rose
-    "Business Expenses": ["#7C3AED", "#8B5CF6"], // Violet
-    "Hobbies & Leisure": ["#14B8A6", "#2DD4BF"], // Teal
-    "Vehicle Maintenance": ["#B45309", "#D97706"], // Amber Dark
-    "Child & Family": ["#BE185D", "#DB2777"], // Pink Dark
-    "Technology & Software": ["#1E40AF", "#3B82F6"], // Blue Dark
-    
-    // Fallback
-    "Other Expense": ["#64748B", "#94A3B8"], // Slate Gray
-    
-    // Legacy categories for backward compatibility
-    "Food": ["#EF4444", "#F87171"], // Red (mapped to Food & Dining)
-    "Transport": ["#06B6D4", "#22D3EE"], // Cyan (mapped to Travel)
-    "Bills": ["#6366F1", "#818CF8"], // Indigo (mapped to Utilities)
-    "Other": ["#64748B", "#94A3B8"], // Slate Gray (mapped to Other Expense)
-  };
+const NON_SELECTABLE_CATEGORIES = ["Income / Transfer In", "Transfer Out"];
 
-  // Grid lines for bar chart background
-  const renderGridLines = () => {
-    return (
-      <View style={styles.gridLinesContainer}>
-        {[0, 1, 2, 3, 4].map((line) => (
-          <View
-            key={line}
-            style={[
-              styles.gridLine,
-              {
-                top: `${line * 20}%`,
-              }
-            ]}
-          />
-        ))}
-      </View>
-    );
-  };
+export default function AnalyticsScreen() {
+  const router = useRouter();
+  const [selectedChart, setSelectedChart] = useState<ChartType>("Bar");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [focusedCategory, setFocusedCategory] = useState<string | null>(null);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserId(user.uid);
-        fetchUserTransactions(user.uid);
-      } else {
-        setError("Please log in to see predictions");
-        setUserId(null);
-      }
-    });
-    return unsubscribe;
-  }, []);
+  const {
+    userId,
+    predictions,
+    loading,
+    error,
+    selectedDays,
+    hasTransactions,
+    handlePredict,
+    setDays,
+    getTotalPredicted,
+    getMaxAmount,
+    getAveragePerCategory,
+  } = useSpendingPredictions();
 
-  async function fetchUserTransactions(uid: string) {
-    try {
-      const txRef = collection(db, "users", uid, "transactions");
-      const snapshot = await getDocs(txRef);
-      const userTransactions = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          date: data.date?.toDate?.()?.toISOString() || new Date().toISOString(),
-          category: data.category || "Other Expense",
-          amount: Number(data.amount) || 0
-        };
-      });
-      setTransactions(userTransactions);
-      setHasTransactions(userTransactions.length > 0);
-    } catch (err: any) {
-      console.error("Error fetching transactions:", err);
-      setError("Failed to load your transactions");
-    }
-  }
+  const totalPredicted = getTotalPredicted();
+  const maxAmount = getMaxAmount();
+  const avgPerCategory = getAveragePerCategory();
 
-  async function handlePredict() {
-    if (!userId) {
-      setError("Please log in first");
-      return;
-    }
-    if (!hasTransactions) {
-      setError("No transactions found. Add some transactions first.");
-      return;
-    }
+  const filteredPredictions = predictions.filter((p) =>
+    p.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-    try {
-      setLoading(true);
-      setError(null);
-      setPredictions([]);
-
-      const API_URL = "https://spending-predict-api-5.onrender.com/predict";
-     
-      const requestData = { transactions, days: selectedDays };
-
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestData),
-      });
-
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); }
-      catch { throw new Error("Invalid JSON from API: " + text); }
-
-      if (data.predictions && Array.isArray(data.predictions)) {
-        setPredictions(data.predictions);
-      } else {
-        throw new Error("API returned invalid format");
-      }
-
-    } catch (err: any) {
-      console.error("Prediction error:", err);
-      setError("API connection failed. Showing demo data.");
-      showDemoPredictions();
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function showDemoPredictions() {
-    const demoPredictions = [];
-    const categories = [
-      "Food & Dining", 
-      "Transport", 
-      "Entertainment", 
-      "Utilities", 
-      "Other Expense",
-      "Recharge",
-      "Education", 
-      "Fuel",
-      "Shopping",
-      "Healthcare"
-    ];
-    
-    for (let cat of categories) {
-      let amount = 0;
-      switch(cat) {
-        case "Food & Dining":
-          amount = Math.floor(Math.random() * 5000) + 2000;
-          break;
-        case "Transport":
-          amount = Math.floor(Math.random() * 3000) + 1000;
-          break;
-        case "Fuel":
-          amount = Math.floor(Math.random() * 4000) + 1500;
-          break;
-        case "Recharge":
-          amount = Math.floor(Math.random() * 1000) + 500;
-          break;
-        case "Education":
-          amount = Math.floor(Math.random() * 8000) + 3000;
-          break;
-        case "Utilities":
-          amount = Math.floor(Math.random() * 7000) + 3000;
-          break;
-        case "Shopping":
-          amount = Math.floor(Math.random() * 6000) + 2000;
-          break;
-        case "Healthcare":
-          amount = Math.floor(Math.random() * 4000) + 1500;
-          break;
-        default:
-          amount = Math.floor(Math.random() * 3000) + 500;
-      }
-      
-      demoPredictions.push({
-        category: cat,
-        amount: amount,
-        isDemo: true
-      });
-    }
-    setPredictions(demoPredictions);
-  }
-
-  // Custom Test Tube Bar Component
-  const TestTubeBar = ({ category, amount, maxAmount }: { category: string, amount: number, maxAmount: number }) => {
-    const heightPercentage = (amount / maxAmount) * 100;
-    const gradientColors = categoryGradients[category] || ["#64748B", "#94A3B8"];
-    const [color1, color2] = gradientColors;
-    
-    return (
-      <View style={styles.testTubeContainer}>
-        {/* Amount Label on Top */}
-        <Text style={styles.amountLabel}>₹{amount.toLocaleString('en-IN')}</Text>
-        
-        {/* Test Tube */}
-        <View style={styles.testTubeOuter}>
-          {/* Test tube body */}
-          <View style={styles.testTubeBody}>
-            {/* Filled portion with gradient */}
-            <View style={[styles.testTubeFill, { height: `${heightPercentage}%` }]}>
-              <LinearGradient
-                colors={[color2, color1]}
-                style={styles.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-              >
-                {/* Shine effect */}
-                <View style={styles.shineEffect} />
-              </LinearGradient>
-            </View>
-          </View>
-        </View>
-        
-        {/* Category Label */}
-        <Text style={styles.categoryLabel} numberOfLines={2}>{category}</Text>
-      </View>
-    );
-  };
-
-  const pieData = predictions.map(p => ({
-    name: p.category,
-    population: p.amount,
-    color: categoryGradients[p.category]?.[0] || "#64748B",
-    legendFontColor: "#fff",
-    legendFontSize: 12
-  }));
-
-  const maxAmount = Math.max(...predictions.map(p => p.amount), 1);
+  const sortedPredictions = [...filteredPredictions].sort(
+    (a, b) => b.amount - a.amount
+  );
+  const top = sortedPredictions[0];
 
   if (!userId) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Please log in to use predictions</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.center}>
+          <Text style={styles.errorText}>Please log in to use analytics</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <Text style={styles.title}>Spending Predictions</Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
 
-      <View style={styles.daysButtons}>
-        {[7, 14, 30, 60, 90].map(days => (
-          <TouchableOpacity
-            key={days}
-            style={[styles.dayButton, selectedDays === days && styles.dayButtonActive]}
-            onPress={() => setSelectedDays(days)}
-          >
-            <Text style={[styles.dayButtonText, selectedDays === days && styles.dayButtonTextActive]}>
-              {days} Days
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [
+            styles.iconButton,
+            pressed && styles.iconButtonPressed,
+          ]}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#10B981" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Spending Analytics</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      <TouchableOpacity
-        style={[styles.predictButton, (!hasTransactions || loading) && styles.predictButtonDisabled]}
-        onPress={handlePredict}
-        disabled={!hasTransactions || loading}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        {loading ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.predictButtonText}>Predict</Text>}
-      </TouchableOpacity>
+        {/* Hero Insight Card */}
+        {predictions.length === 0 && !loading && (
+          <View style={styles.heroCard}>
+            <Text style={styles.heroTitle}>Smart Spending Forecast</Text>
+            <Text style={styles.heroSubtitle}>
+              Analyze your past spending and predict where your money may go in
+              the next {selectedDays} days.
+            </Text>
+            <View style={styles.heroHighlightsRow}>
+              <View style={styles.heroChip}>
+                <MaterialCommunityIcons
+                  name="star-four-points-outline"
+                  size={14}
+                  color="#34D399"
+                />
+                <Text style={styles.heroChipText}>AI-powered insights</Text>
+              </View>
+              <View style={styles.heroChip}>
+                <MaterialCommunityIcons
+                  name="shield-check-outline"
+                  size={14}
+                  color="#A7F3D0"
+                />
+                <Text style={styles.heroChipText}>Private & secure</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
-      {error && <Text style={styles.errorText}>{error}</Text>}
-
-      {predictions.length > 0 && (
-        <View style={styles.chartTypeContainer}>
-          {["Bar", "Pie"].map(type => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.chartTypeButton,
-                selectedChart === type && styles.chartTypeButtonActive
-              ]}
-              onPress={() => setSelectedChart(type as "Bar" | "Pie")}
-            >
-              <Text style={[
-                styles.chartTypeText,
-                selectedChart === type && styles.chartTypeTextActive
-              ]}>
-                {type}
-              </Text>
-            </TouchableOpacity>
+        {/* Days selector with recommended badge */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Forecast Range</Text>
+        </View>
+        <View style={styles.daysButtons}>
+          {[7, 14, 30, 60, 90].map((days) => (
+            <View key={days} style={{ position: "relative" }}>
+              {days === 30 && (
+                <Text style={styles.recommendedBadge}>Recommended</Text>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.dayButton,
+                  selectedDays === days && styles.dayButtonActive,
+                ]}
+                onPress={() => setDays(days)}
+              >
+                <Text
+                  style={[
+                    styles.dayButtonText,
+                    selectedDays === days && styles.dayButtonTextActive,
+                  ]}
+                >
+                  {days}d
+                </Text>
+              </TouchableOpacity>
+            </View>
           ))}
         </View>
-      )}
 
-      {predictions.length > 0 && selectedChart === "Bar" && (
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Predicted Spending by Category</Text>
-          
-          <View style={styles.chartWithAxis}>
-            {/* Grid Lines Background */}
-            {renderGridLines()}
-            
-            {/* Y-Axis */}
-            <View style={styles.yAxis}>
-              {[5, 4, 3, 2, 1, 0].map((segment) => {
-                const value = Math.round((maxAmount * segment) / 5);
-                return (
-                  <View key={segment} style={styles.yAxisLabel}>
-                    <Text style={styles.yAxisText}>₹{value.toLocaleString('en-IN', { notation: 'compact' })}</Text>
-                  </View>
-                );
-              })}
+        {/* Predict button */}
+        <TouchableOpacity
+          style={[
+            styles.predictButton,
+            (!hasTransactions || loading) && styles.predictButtonDisabled,
+          ]}
+          onPress={handlePredict}
+          disabled={!hasTransactions || loading}
+        >
+          {loading ? (
+            <View style={styles.predictContentRow}>
+              <ActivityIndicator size="small" color="#000" />
+              <Text style={styles.predictButtonText}>Analyzing patterns...</Text>
             </View>
-            
-            {/* Chart Area */}
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={true}
-              contentContainerStyle={styles.testTubeScrollContent}
-            >
-              <View style={styles.testTubesRow}>
-                {predictions.map((p, index) => (
-                  <TestTubeBar 
-                    key={index}
-                    category={p.category}
-                    amount={p.amount}
-                    maxAmount={maxAmount}
-                  />
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      )}
+          ) : (
+            <View style={styles.predictContentRow}>
+              <MaterialCommunityIcons
+                name="robot-outline"
+                size={18}
+                color="#000"
+              />
+              <Text style={styles.predictButtonText}>Predict Spending</Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
-    {predictions.length > 0 && selectedChart === "Pie" && (
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Spending Distribution</Text>
-          
-          {/* Use existing PieChart but with better styling */}
-          <View style={styles.pieChartWrapper}>
-            <PieChart
-              data={pieData}
-              width={screenWidth - 40}
-              height={220}
-              chartConfig={{
-                ...chartConfig,
-                color: (opacity = 1) => `rgba(52, 211, 153, ${opacity})`,
-              }}
-              accessor={"population"}
-              backgroundColor={"transparent"}
-              paddingLeft={"0"}
-              center={[10, 0]}
-              absolute
-              hasLegend={false}
+        {/* Inline info for no transactions */}
+        {!hasTransactions && (
+          <View style={styles.infoBanner}>
+            <MaterialCommunityIcons
+              name="information-outline"
+              size={18}
+              color="#FCD34D"
             />
+            <Text style={styles.infoBannerText}>
+              Add a few transactions to unlock personalized predictions.
+            </Text>
           </View>
-          
-          {/* Premium Card-based Legend */}
-          <View style={styles.premiumLegendContainer}>
-            {predictions.map((p, i) => {
-              const total = predictions.reduce((sum, pr) => sum + pr.amount, 0);
-              const percentage = ((p.amount / total) * 100).toFixed(1);
-              const gradientColors = categoryGradients[p.category] || ["#64748B", "#94A3B8"];
-              
-              return (
-                <View key={i} style={styles.legendCard}>
-                  <View style={styles.legendCardLeft}>
-                    <LinearGradient
-                      colors={gradientColors}
-                      style={styles.legendDot}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    />
-                    <View style={styles.legendTextContainer}>
-                      <Text style={styles.legendCardCategory}>{p.category}</Text>
-                      <Text style={styles.legendCardPercentage}>{percentage}%</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.legendCardAmount}>₹{p.amount.toLocaleString('en-IN')}</Text>
-                </View>
-              );
-            })}
+        )}
+
+        {/* Error */}
+        {error && (
+          <View style={styles.errorBanner}>
+            <MaterialCommunityIcons
+              name="alert-circle-outline"
+              size={18}
+              color="#FCA5A5"
+            />
+            <Text style={styles.errorBannerText}>{error}</Text>
           </View>
-          
-          {/* Summary Stats */}
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Categories</Text>
-              <Text style={styles.summaryValue}>{predictions.length}</Text>
+        )}
+
+        {/* Only show analytics when predictions available */}
+        {predictions.length > 0 && (
+          <>
+            {/* Top summary chips */}
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Total forecast</Text>
+                <Text style={styles.statValue}>
+                  ₹{totalPredicted.toLocaleString("en-IN")}
+                </Text>
+                <Text style={styles.statSub}>Next {selectedDays} days</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Avg / category</Text>
+                <Text style={styles.statValue}>
+                  ₹{avgPerCategory.toFixed(0)}
+                </Text>
+                <Text style={styles.statSub}>
+                  {predictions.length} categories
+                </Text>
+              </View>
             </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Avg/Category</Text>
-              <Text style={styles.summaryValue}>
-                ₹{(predictions.reduce((s, p) => s + p.amount, 0) / predictions.length).toFixed(0)}
+
+            {/* Key Insights Card */}
+            {top && (
+              <View style={styles.insightsCard}>
+                <View style={styles.insightsHeaderRow}>
+                  <Text style={styles.insightsTitle}>Key Insights</Text>
+                  <MaterialCommunityIcons
+                    name="lightbulb-on-outline"
+                    size={18}
+                    color="#FBBF24"
+                  />
+                </View>
+                <Text style={styles.insightsBullet}>
+                  • Highest predicted spending:{" "}
+                  <Text style={styles.insightsHighlight}>{top.category}</Text>{" "}
+                  (₹{top.amount.toLocaleString("en-IN")}).
+                </Text>
+                <Text style={styles.insightsBullet}>
+                  • Top {Math.min(3, sortedPredictions.length)} categories take{" "}
+                  <Text style={styles.insightsHighlight}>
+                    {getTopShare(sortedPredictions, totalPredicted)}%
+                  </Text>{" "}
+                  of your forecast.
+                </Text>
+                <Text style={styles.insightsBullet}>
+                  • Consider reducing{" "}
+                  <Text style={styles.insightsHighlight}>{top.category}</Text>{" "}
+                  by 10–15% to stay under budget.
+                </Text>
+              </View>
+            )}
+
+            {/* Search within categories */}
+            <View style={styles.searchContainer}>
+              <MaterialCommunityIcons
+                name="magnify"
+                size={20}
+                color="#6B7280"
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Filter forecasted categories..."
+                placeholderTextColor="#6B7280"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery("")}>
+                  <MaterialCommunityIcons
+                    name="close-circle"
+                    size={20}
+                    color="#6B7280"
+                  />
+                </Pressable>
+              )}
+            </View>
+
+            {/* Chart toggle (segmented control) */}
+            <View style={styles.segmented}>
+              {(["Bar", "Pie"] as ChartType[]).map((type) => (
+                <Pressable
+                  key={type}
+                  style={[
+                    styles.segment,
+                    selectedChart === type && styles.segmentActive,
+                  ]}
+                  onPress={() => setSelectedChart(type)}
+                >
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      selectedChart === type && styles.segmentTextActive,
+                    ]}
+                  >
+                    {type === "Bar" ? "Categories" : "Distribution"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Charts */}
+            {selectedChart === "Bar" && (
+              <View style={styles.chartContainer}>
+                <Text style={styles.chartTitle}>
+                  Predicted Spending by Category
+                </Text>
+                <View style={styles.chartWithAxis}>
+                  <GridLines />
+                  <View style={styles.yAxis}>
+                    {[5, 4, 3, 2, 1, 0].map((segment) => {
+                      const value = Math.round((maxAmount * segment) / 5);
+                      return (
+                        <View key={segment} style={styles.yAxisLabel}>
+                          <Text style={styles.yAxisText}>
+                            ₹
+                            {value.toLocaleString("en-IN", {
+                              notation: "compact",
+                            })}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator
+                    contentContainerStyle={styles.testTubeScrollContent}
+                  >
+                    <View style={styles.testTubesRow}>
+                      {sortedPredictions.map((p, index) => {
+                        const isTop = top && p.category === top.category;
+                        return (
+                          <Pressable
+                            key={`${p.category}-${index}`}
+                            onPress={() =>
+                              setFocusedCategory(
+                                focusedCategory === p.category
+                                  ? null
+                                  : p.category
+                              )
+                            }
+                          >
+                            <TestTubeBar
+                              category={p.category}
+                              amount={p.amount}
+                              maxAmount={maxAmount}
+                              isTop={isTop}
+                              isFocused={focusedCategory === p.category}
+                            />
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                </View>
+
+                {/* Focused tooltip */}
+                {focusedCategory && (
+                  <View style={styles.tooltipCard}>
+                    <Text style={styles.tooltipTitle}>{focusedCategory}</Text>
+                    <Text style={styles.tooltipText}>
+                      ₹
+                      {getAmountForCategory(
+                        sortedPredictions,
+                        focusedCategory
+                      ).toLocaleString("en-IN")}{" "}
+                      •{" "}
+                      {getShareForCategory(
+                        sortedPredictions,
+                        totalPredicted,
+                        focusedCategory
+                      )}
+                      % of total
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {selectedChart === "Pie" && (
+              <View style={styles.chartContainer}>
+                <Text style={styles.chartTitle}>Spending Distribution</Text>
+                <View style={styles.pieChartWrapper}>
+                  <PieChart
+                    data={sortedPredictions.map((p) => ({
+                      name: p.category,
+                      population: p.amount,
+                      color: getCategoryGradient(p.category)[0],
+                      legendFontColor: "#fff",
+                      legendFontSize: 12,
+                    }))}
+                    width={screenWidth - 40}
+                    height={220}
+                    chartConfig={{
+                      backgroundGradientFrom: "#000",
+                      backgroundGradientTo: "#000",
+                      decimalPlaces: 0,
+                      color: (opacity = 1) =>
+                        `rgba(52, 211, 153, ${opacity})`,
+                      labelColor: (opacity = 1) =>
+                        `rgba(255, 255, 255, ${opacity})`,
+                    }}
+                    accessor={"population"}
+                    backgroundColor={"transparent"}
+                    paddingLeft={"0"}
+                    center={[10, 0]}
+                    absolute
+                    hasLegend={false}
+                  />
+                </View>
+
+                {/* Premium legend */}
+                <View style={styles.premiumLegendContainer}>
+                  {sortedPredictions.map((p, i) => {
+                    const percentage = (
+                      (p.amount / totalPredicted) *
+                      100
+                    ).toFixed(1);
+                    const gradientColors =
+                      CATEGORY_GRADIENTS[p.category] || [
+                        "#64748B",
+                        "#94A3B8",
+                      ];
+                    const isActive = focusedCategory === p.category;
+                    return (
+                      <Pressable
+                        key={`${p.category}-${i}`}
+                        onPress={() =>
+                          setFocusedCategory(
+                            isActive ? null : p.category
+                          )
+                        }
+                      >
+                        <View
+                          style={[
+                            styles.legendCard,
+                            isActive && styles.legendCardActive,
+                          ]}
+                        >
+                          <View style={styles.legendCardLeft}>
+                            <LinearGradient
+                              colors={gradientColors}
+                              style={styles.legendDot}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                            />
+                            <View style={styles.legendTextContainer}>
+                              <Text style={styles.legendCardCategory}>
+                                {p.category}
+                              </Text>
+                              <Text style={styles.legendCardPercentage}>
+                                {percentage}% of total
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={styles.legendCardAmount}>
+                            ₹{p.amount.toLocaleString("en-IN")}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {/* Summary stats */}
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Categories</Text>
+                    <Text style={styles.summaryValue}>
+                      {predictions.length}
+                    </Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Avg / category</Text>
+                    <Text style={styles.summaryValue}>
+                      ₹{avgPerCategory.toFixed(0)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Total forecast card */}
+            <View style={styles.totalContainer}>
+              <Text style={styles.totalTitle}>Total Predicted Spending</Text>
+              <Text style={styles.totalAmount}>
+                ₹{totalPredicted.toLocaleString("en-IN")}
+              </Text>
+              <Text style={styles.totalPeriod}>
+                for next {selectedDays} days
               </Text>
             </View>
-          </View>
-        </View>
-)}
-
-      {predictions.length > 0 && (
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalTitle}>Total Predicted Spending</Text>
-          <Text style={styles.totalAmount}>
-            ₹{predictions.reduce((sum, p) => sum + p.amount, 0).toLocaleString('en-IN')}
-          </Text>
-          <Text style={styles.totalPeriod}>for next {selectedDays} days</Text>
-        </View>
-      )}
-    </ScrollView>
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
+/* Helpers */
+
+function getTopShare(preds: { amount: number }[], total: number): string {
+  if (!total || preds.length === 0) return "0.0";
+  const top3 = preds.slice(0, 3).reduce((s, p) => s + p.amount, 0);
+  return ((top3 / total) * 100).toFixed(1);
+}
+
+function getAmountForCategory(
+  preds: { category: string; amount: number }[],
+  cat: string
+): number {
+  const found = preds.find((p) => p.category === cat);
+  return found ? found.amount : 0;
+}
+
+function getShareForCategory(
+  preds: { category: string; amount: number }[],
+  total: number,
+  cat: string
+): string {
+  if (!total) return "0.0";
+  const amount = getAmountForCategory(preds, cat);
+  return ((amount / total) * 100).toFixed(1);
+}
+
+/* Small components */
+
+type TestTubeProps = {
+  category: string;
+  amount: number;
+  maxAmount: number;
+  isTop: boolean;
+  isFocused: boolean;
+};
+
+const TestTubeBar = ({
+  category,
+  amount,
+  maxAmount,
+  isTop,
+  isFocused,
+}: TestTubeProps) => {
+  const heightPercentage = (amount / maxAmount) * 100;
+  const [color1, color2] = getCategoryGradient(category);
+
+  return (
+    <View style={styles.testTubeContainer}>
+      <Text style={styles.amountLabel}>
+        ₹{amount.toLocaleString("en-IN")}
+      </Text>
+      <View style={styles.testTubeOuter}>
+        <View
+          style={[
+            styles.testTubeBody,
+            isTop && styles.testTubeBodyTop,
+            isFocused && styles.testTubeBodyFocused,
+          ]}
+        >
+          <View
+            style={[styles.testTubeFill, { height: `${heightPercentage}%` }]}
+          >
+            <LinearGradient
+              colors={[color2, color1]}
+              style={styles.gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            >
+              <View style={styles.shineEffect} />
+            </LinearGradient>
+          </View>
+        </View>
+      </View>
+      <Text style={styles.categoryLabel} numberOfLines={2}>
+        {category}
+      </Text>
+    </View>
+  );
+};
+
+const GridLines = () => (
+  <View style={styles.gridLinesContainer}>
+    {[0, 1, 2, 3, 4].map((line) => (
+      <View
+        key={line}
+        style={[
+          styles.gridLine,
+          {
+            top: `${line * 20}%`,
+          },
+        ]}
+      />
+    ))}
+  </View>
+);
+
+/* Styles */
+
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 25,
+  },
+  header: {
     paddingTop: 20,
-    backgroundColor: "#000",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  center: { 
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center", 
-    padding: 20,
-    backgroundColor: "#000"
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 18,
+    borderWidth: 4,
+    borderColor: "#1F2937",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#020617",
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: "800", 
-    color: "#34D399", 
-    marginTop: 20, 
-    marginBottom: 10, 
-    textAlign: "center",
-    textShadowColor: "#10B981",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+  iconButtonPressed: {
+    opacity: 0.5,
   },
-  daysButtons: { 
-    flexDirection: "row", 
-    flexWrap: "wrap", 
-    justifyContent: "center", 
-    marginBottom: 20,
-    marginHorizontal: 16,
-  },
-  dayButton: { 
-    backgroundColor: "#111", 
-    paddingHorizontal: 16, 
-    paddingVertical: 10, 
-    borderRadius: 10, 
-    margin: 4,
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  dayButtonActive: { 
-    backgroundColor: "#34D399", 
-    borderColor: "#10B981",
-  },
-  dayButtonText: { 
-    color: "#34D399", 
+  headerTitle: {
+    color: "#E5E7EB",
+    fontSize: 18,
     fontWeight: "700",
-    fontSize: 12,
   },
-  dayButtonTextActive: { 
-    color: "#000",
-    fontWeight: "800",
+  heroCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: "#020817",
+    borderWidth: 1,
+    borderColor: "#22C55E33",
   },
-  predictButton: { 
-    backgroundColor: "#34D399", 
-    padding: 16, 
-    borderRadius: 12, 
-    alignItems: "center", 
-    marginHorizontal: 16, 
-    marginBottom: 20,
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  predictButtonDisabled: { 
-    backgroundColor: "#555",
-    shadowColor: "transparent",
-  },
-  predictButtonText: { 
-    color: "#000", 
-    fontWeight: "700", 
+  heroTitle: {
+    color: "#A7F3D0",
     fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 6,
   },
-  errorText: { 
-    color: "#E6B1B1", 
-    textAlign: "center", 
-    marginVertical: 10, 
-    fontWeight: "700",
-    marginHorizontal: 16,
-    padding: 10,
-    backgroundColor: "rgba(197, 122, 122, 0.1)",
-    borderRadius: 8,
+  heroSubtitle: {
+    color: "#ffffff",
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  heroHighlightsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+  },
+  heroChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "#020817",
     borderWidth: 1,
-    borderColor: "#C57A7A",
+    borderColor: "#05966955",
   },
-  chartTypeContainer: {
-    flexDirection: "row", 
-    justifyContent: "center", 
-    marginVertical: 12,
+  heroChipText: {
+    color: "#f7f7f7",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  sectionHeaderRow: {
+    marginTop: 4,
     marginHorizontal: 16,
-  },
-  chartTypeButton: {
-    backgroundColor: "#111", 
-    paddingHorizontal: 20,
-    paddingVertical: 10, 
-    borderRadius: 10, 
-    marginHorizontal: 8,
-    borderWidth: 1,
-    borderColor: "#34D399",
-    minWidth: 80,
+    marginBottom: 6,
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
   },
-  chartTypeButtonActive: { 
-    backgroundColor: "#34D399",
+  sectionTitle: {
+    color: "#9CA3AF",
+    fontSize: 13,
+    fontWeight: "600",
   },
-  chartTypeText: { 
-    color: "#34D399", 
-    fontWeight: "700",
+  daysButtons: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+    marginBottom: 16,
+    marginHorizontal: 20,
+    gap: 9,
+  },
+  dayButton: {
+    backgroundColor: "#020817",
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 990,
+    borderWidth: 5,
+    borderColor: "#1F2937",
+  },
+  dayButtonActive: {
+    backgroundColor: "#020817",
+    borderColor: "#4ADE80",
+    
+  },
+  dayButtonText: {
+    color: "#ffffff",
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  dayButtonTextActive: {
+    color: "#fefefe",
+    fontWeight: "800",
+  },
+  recommendedBadge: {
+    position: "absolute",
+    top: -12,
+    alignSelf: "center",
+    backgroundColor: "#10B981",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    fontSize: 9,
+    color: "#022C22",
+    fontWeight: "800",
+  },
+  predictButton: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#22C55E",
+    shadowColor: "#48b16f",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  predictButtonDisabled: {
+    backgroundColor: "#4B5563",
+    shadowOpacity: 0,
+  },
+  predictContentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  predictButtonText: {
+    color: "#022C22",
+    fontWeight: "800",
+    fontSize: 15,
+  },
+  infoBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#1E293B",
+    gap: 8,
+    marginBottom: 8,
+  },
+  infoBannerText: {
+    color: "#E5E7EB",
+    fontSize: 12,
+    flex: 1,
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#451A1A",
+    gap: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  errorBannerText: {
+    color: "#FECACA",
+    fontSize: 12,
+    flex: 1,
+  },
+  errorText: {
+    color: "#FCA5A5",
     fontSize: 14,
+    fontWeight: "700",
   },
-  chartTypeTextActive: { 
-    color: "#000",
+  statsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#020617",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#60a884",
+  },
+  statLabel: {
+    color: "#a4dece",
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  statValue: {
+    color: "#F9FAFB",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  statSub: {
+    color: "#6B7280",
+    fontSize: 11,
+    marginTop: 3,
+  },
+  insightsCard: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: "#020817",
+    borderWidth: 1,
+    borderColor: "#4B5563",
+  },
+  insightsHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  insightsTitle: {
+    color: "#71bb94",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  insightsBullet: {
+    color: "#ffffff",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  insightsHighlight: {
+    color: "#FDE68A",
+    fontWeight: "700",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#020617",
+    borderWidth: 1,
+    borderColor: "#1F2937",
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: "#d5d7dc",
+    fontSize: 13,
+    paddingVertical: 0,
+  },
+  segmented: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginBottom: 10,
+    padding: 5,
+    borderRadius: 999,
+    backgroundColor: "#020617",
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  segment: {
+    flex: 1,
+    borderRadius: 999,
+    paddingVertical: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+   
+  },
+  segmentActive: {
+    backgroundColor: "#88ecad",
+  },
+  segmentText: {
+    fontSize: 12,
+    color: "#ffffff",
+    fontWeight: "600",
+  },
+  segmentTextActive: {
+    color: "#022C22",
     fontWeight: "800",
   },
   chartContainer: {
-    backgroundColor: "#111",
+    backgroundColor: "#020617",
     marginHorizontal: 16,
     marginBottom: 14,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#111827",
   },
   chartTitle: {
-    color: "#fff",
-    fontSize: 16,
+    color: "#E5E7EB",
+    fontSize: 14,
     fontWeight: "700",
-    marginBottom: 20,
+    marginBottom: 14,
     textAlign: "center",
   },
   chartWithAxis: {
     flexDirection: "row",
     alignItems: "flex-start",
-    position: 'relative',
-    height: 280,
+    position: "relative",
+    height: 260,
   },
   gridLinesContainer: {
-    position: 'absolute',
+    position: "absolute",
     left: 60,
     right: 0,
     top: 0,
     bottom: 40,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     paddingHorizontal: 10,
   },
   gridLine: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     height: 1,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
     borderWidth: 1,
-    borderColor: '#064E3B',
+    borderColor: "#064E3B",
   },
   yAxis: {
     width: 60,
-    height: 230,
+    height: 220,
     justifyContent: "space-between",
     paddingRight: 8,
-    paddingTop: 15,
+    paddingTop: 10,
   },
   yAxisLabel: {
     alignItems: "flex-end",
   },
   yAxisText: {
-    color: "#888",
+    color: "#6B7280",
     fontSize: 10,
     fontWeight: "600",
   },
@@ -631,19 +1107,19 @@ const styles = StyleSheet.create({
   testTubesRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    height: 260,
+    height: 240,
     paddingBottom: 10,
   },
   testTubeContainer: {
     alignItems: "center",
     marginHorizontal: 6,
     width: 55,
-    height: 260,
+    height: 240,
     justifyContent: "flex-end",
     paddingBottom: 10,
   },
   amountLabel: {
-    color: "#fff",
+    color: "#E5E7EB",
     fontSize: 9,
     fontWeight: "700",
     marginBottom: 6,
@@ -653,18 +1129,28 @@ const styles = StyleSheet.create({
   },
   testTubeOuter: {
     width: 32,
-    height: 200,
+    height: 180,
     alignItems: "center",
   },
   testTubeBody: {
     width: 32,
-    height: 200,
-    backgroundColor: "#0a0a0a",
+    height: 180,
+    backgroundColor: "#020617",
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: "#333",
+    borderColor: "#1F2937",
     overflow: "hidden",
     justifyContent: "flex-end",
+  },
+  testTubeBodyTop: {
+    borderColor: "#22C55E",
+  },
+  testTubeBodyFocused: {
+    borderColor: "#FBBF24",
+    shadowColor: "#FBBF24",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
   },
   testTubeFill: {
     width: "100%",
@@ -681,16 +1167,34 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
     borderRadius: 2,
   },
   categoryLabel: {
-    color: "#fff",
+    color: "#E5E7EB",
     fontSize: 9,
     fontWeight: "600",
     textAlign: "center",
     marginTop: 6,
     lineHeight: 12,
+  },
+  tooltipCard: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#0B1120",
+    borderWidth: 1,
+    borderColor: "#4B5563",
+  },
+  tooltipTitle: {
+    color: "#E5E7EB",
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  tooltipText: {
+    color: "#9CA3AF",
+    fontSize: 12,
   },
   pieChartWrapper: {
     alignItems: "center",
@@ -699,29 +1203,28 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   premiumLegendContainer: {
-    marginTop: 24,
-    gap: 10,
+    marginTop: 18,
+    gap: 8,
   },
   legendCard: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#0a0a0a",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    backgroundColor: "#020617",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    borderColor: "#111827",
+  },
+  legendCardActive: {
+    borderColor: "#22C55E",
+    backgroundColor: "#022C22",
   },
   legendCardLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   legendDot: {
@@ -733,75 +1236,76 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   legendCardCategory: {
-    color: "#fff",
-    fontSize: 14,
+    color: "#E5E7EB",
+    fontSize: 13,
     fontWeight: "700",
-    marginBottom: 2,
+    marginBottom: 1,
   },
   legendCardPercentage: {
-    color: "#888",
+    color: "#9CA3AF",
     fontSize: 11,
     fontWeight: "600",
   },
   legendCardAmount: {
-    color: "#34D399",
-    fontSize: 14,
+    color: "#22C55E",
+    fontSize: 13,
     fontWeight: "800",
   },
   summaryRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    marginTop: 20,
-    paddingTop: 20,
+    marginTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#222",
+    borderTopColor: "#111827",
   },
   summaryItem: {
     alignItems: "center",
     flex: 1,
   },
   summaryLabel: {
-    color: "#888",
+    color: "#9CA3AF",
     fontSize: 11,
     fontWeight: "600",
     marginBottom: 4,
   },
   summaryValue: {
-    color: "#fff",
-    fontSize: 16,
+    color: "#F9FAFB",
+    fontSize: 15,
     fontWeight: "800",
   },
   summaryDivider: {
     width: 1,
-    height: 30,
-    backgroundColor: "#222",
+    height: 26,
+    backgroundColor: "#111827",
   },
   totalContainer: {
-    backgroundColor: "#111",
+    backgroundColor: "#020617",
     marginHorizontal: 16,
-    marginBottom: 40,
-    padding: 20,
+    marginTop: 6,
+    marginBottom: 32,
+    padding: 18,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#34D399",
+    borderColor: "#22C55E",
     alignItems: "center",
   },
   totalTitle: {
-    color: "#34D399",
-    fontSize: 18,
+    color: "#A7F3D0",
+    fontSize: 14,
     fontWeight: "700",
-    marginBottom: 10,
+    marginBottom: 4,
   },
   totalAmount: {
-    color: "#fff",
-    fontSize: 32,
+    color: "#F9FAFB",
+    fontSize: 26,
     fontWeight: "800",
-    marginBottom: 5,
+    marginBottom: 4,
   },
   totalPeriod: {
-    color: "#888",
-    fontSize: 14,
+    color: "#9CA3AF",
+    fontSize: 12,
     fontWeight: "600",
   },
 });
