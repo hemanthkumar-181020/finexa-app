@@ -21,7 +21,7 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 ### 💳 Transaction Management
 - Add, edit, and delete income/expense transactions
 - Categorized transaction tracking (Food, Transportation, Entertainment, etc.)
-- Real-time transaction updates with Firestore
+- Real-time transaction updates
 
 ### 📊 Financial Visualization
 - **Expense Pie Charts** - Visual breakdown of spending by category
@@ -30,16 +30,59 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 - Monthly/Weekly spending analysis
 
 ### 🏦 Transactions From Banks Pdf 
-- SBI Bank pdf
-- PhonePe pdf
+- SBI Bank pdf processing via external API
+- PhonePe pdf processing via external API
 - Support for multiple bank pdfs
 - Secure transaction synchronization
 
-### 📱 User Experience
-- Clean, modern design with intuitive navigation
-- Tab-based navigation system
-- Responsive layout for all device sizes
-- File-based routing with Expo Router
+### 🤖 AI-Powered Features
+- Spending predictions and forecasting
+- Smart budget recommendations
+- Transaction categorization
+
+## 🏗️ System Architecture
+
+### Microservices Architecture
+```
+┌─────────────────────────────────────────┐
+│         React Native Mobile App         │
+│                 (Expo)                  │
+└─────────────────────┬───────────────────┘
+                      │
+┌─────────────────────▼───────────────────┐
+│          Firebase Services              │
+│  ┌────────────┬────────────┬─────────┐ │
+│  │  Auth      │  Firestore │ Storage │ │
+│  └────────────┴────────────┴─────────┘ │
+└─────┬────────────┬────────────┬────────┘
+      │            │            │
+┌─────▼────┐ ┌─────▼────┐ ┌────▼──────┐
+│ SBI PDF  │ │PhonePe PDF│ │Prediction │
+│ Extractor│ │ Extractor │ │   API     │
+│ Service  │ │ Service   │ │           │
+└──────────┘ └───────────┘ └───────────┘
+```
+
+### External API Services Integration
+
+| Service | Purpose | Repository | Deployment |
+|---------|---------|------------|------------|
+| **SBI PDF Extractor** | Process SBI bank statements | [github.com/reddy1307/sbi-pdf-extract](https://github.com/reddy1307/sbi-pdf-extract) | Vercel/Render |
+| **PhonePe PDF Extractor** | Process PhonePe statements | [github.com/reddy1307/PDF-EXTRACT](https://github.com/reddy1307/PDF-EXTRACT) | Vercel/Render |
+| **Spending Predict API** | AI spending predictions | [github.com/reddy1307/spending-predict-api](https://github.com/reddy1307/spending-predict-api) | Vercel/Render |
+
+### Data Flow Diagram
+```
+User Uploads PDF → Firebase Storage → External API Service
+       ↓                              ↓
+Mobile App ←─── Processed Data ←── API Response
+       ↓
+Firestore Storage
+       ↓
+Dashboard Display
+       ↓
+Charts & Analytics
+```
 
 ## 🛠️ Tech Stack
 
@@ -52,6 +95,7 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 ### Backend Services
 - **Firebase Authentication** - User management
 - **Firebase Storage** - File storage
+- **External APIs** - PDF processing and AI services
 
 ### State Management
 - **React Context API** - Global state management
@@ -88,7 +132,15 @@ A modern, cross-platform mobile application for comprehensive personal finance m
      - `google-services.json` (Android)
    - Place these files in the project root directory
 
-4. **Start Development**
+4. **Configure External APIs**
+   Create a `.env` file with:
+   ```env
+   EXPO_PUBLIC_SBI_API_URL=https://your-sbi-service.vercel.app/api
+   EXPO_PUBLIC_PHONEPE_API_URL=https://your-phonepe-service.vercel.app/api
+   EXPO_PUBLIC_PREDICTION_API_URL=https://your-prediction-service.render.com/api
+   ```
+
+5. **Start Development**
    ```bash
    npx expo start
    ```
@@ -138,7 +190,50 @@ npx eas build --platform ios        # Build for iOS
 npx eas submit --platform ios       # Submit to App Store
 npx eas submit --platform android   # Submit to Play Store
 ```
-## Contributors
+
+## 📊 External Service Integration
+
+### API Service Configuration
+```typescript
+// services/api/config.ts
+export const API_ENDPOINTS = {
+  SBI_PDF_EXTRACT: process.env.EXPO_PUBLIC_SBI_API_URL + '/extract',
+  PHONEPE_PDF_EXTRACT: process.env.EXPO_PUBLIC_PHONEPE_API_URL + '/extract',
+  SPENDING_PREDICT: process.env.EXPO_PUBLIC_PREDICTION_API_URL + '/predict',
+};
+
+// services/api/client.ts
+export class APIClient {
+  async processSBIPDF(pdfFile: File, userId: string) {
+    const formData = new FormData();
+    formData.append('pdf', pdfFile);
+    formData.append('userId', userId);
+    
+    const response = await fetch(API_ENDPOINTS.SBI_PDF_EXTRACT, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    return response.json();
+  }
+  
+  async getSpendingPredictions(userId: string, timeframe: string) {
+    const response = await fetch(`${API_ENDPOINTS.SPENDING_PREDICT}?userId=${userId}&timeframe=${timeframe}`);
+    return response.json();
+  }
+}
+```
+
+### PDF Processing Flow
+1. User uploads bank statement PDF
+2. PDF stored in Firebase Storage
+3. PDF sent to appropriate external service (SBI/PhonePe)
+4. Service extracts transactions and returns structured data
+5. Data stored in Firestore and displayed in app
+6. Prediction API analyzes patterns for future spending
+
+## 👥 Contributors
+
 <table>
   <tr>
     <td align="center">
@@ -165,7 +260,6 @@ npx eas submit --platform android   # Submit to Play Store
   </tr>
 </table>
 
-
 ## 🔗 Useful Links
 
 - [Expo Documentation](https://docs.expo.dev/)
@@ -173,7 +267,10 @@ npx eas submit --platform android   # Submit to Play Store
 - [Firebase Documentation](https://firebase.google.com/docs)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 
-
+### External Service Repositories:
+- [SBI PDF Extractor](https://github.com/reddy1307/sbi-pdf-extract)
+- [PhonePe PDF Extractor](https://github.com/reddy1307/PDF-EXTRACT)
+- [Spending Predict API](https://github.com/reddy1307/spending-predict-api)
 
 ---
 
