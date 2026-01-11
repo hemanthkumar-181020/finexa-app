@@ -51,13 +51,11 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 
 ### Backend Services
 - **Firebase Authentication** - User management
-- **Cloud Firestore** - Real-time database
 - **Firebase Storage** - File storage
 
 ### State Management
 - **React Context API** - Global state management
 - **Custom Hooks** - Reusable logic
-- **Local Storage** - Offline data persistence
 
 ## 🚀 Installation
 
