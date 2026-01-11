@@ -40,7 +40,8 @@ export const CATEGORY_GRADIENTS: Record<string, readonly [string, string]> = {
   Food: ["#EF4444", "#F87171"], // maps to Food & Dining
   Transport: ["#06B6D4", "#22D3EE"], // maps to Travel
   Bills: ["#6366F1", "#818CF8"], // maps to Utilities
-  Other: ["#64748B", "#94A3B8"], // maps to Other Expense
+  Other: ["#8b8a64", "#94A3B8"], 
+  "GoalCollection": ["#030303", "#b6d334f6"],// maps to Other Expense
 };
 
 /**

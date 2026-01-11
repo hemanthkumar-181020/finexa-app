@@ -51,6 +51,7 @@ const categories = [
   { id: 'gifts', name: 'Gifts & Donations', icon: '🎁' },
   { id: 'business', name: 'Business Expenses', icon: '💼' },
   { id: 'tech', name: 'Technology & Software', icon: '💻' },
+  { id: 'goal_collection', name: 'Goal Contribution', icon: '🎯' },
 ];
 
 export default function CompleteProfile() {

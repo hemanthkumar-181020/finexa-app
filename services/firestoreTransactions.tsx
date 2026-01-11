@@ -16,6 +16,8 @@ import {
 import { db } from './firebase';
 import type { Transaction } from '../types/transaction';
 import { getDoc } from 'firebase/firestore';
+import { addToGoalSaved } from "./firestoreGoals";
+
 // Helper function for safe error logging
 const getSafeErrorDetails = (error: any) => {
   if (!error) return { code: 'NO_ERROR', message: 'No error object provided' };
@@ -556,5 +558,85 @@ export async function testFirestoreConnection(uid: string): Promise<boolean> {
     const errorDetails = getSafeErrorDetails(error);
     console.error('❌ Firestore connection test failed:', errorDetails);
     return false;
+  }
+}
+
+// ADD THIS HELPER AT THE BOTTOM – DO NOT REMOVE EXISTING FUNCTIONS
+export async function createGoalContributionTransaction(
+  uid: string,
+  data: {
+    amount: number;
+    goalId: string;
+    goalName: string;
+  }
+): Promise<string> {
+  console.log(`🎯 Creating goal contribution tx for UID: ${uid}, goal: ${data.goalId}`);
+
+  if (!uid || uid.trim() === "") {
+    throw new Error("❌ Invalid UID provided");
+  }
+
+  const txRef = collection(db, "users", uid, "transactions");
+  const now = new Date();
+
+  const payload = {
+    amount: data.amount,
+    type: "expense" as const,
+    category: "Goal Contribution",
+    note: `Contribution to goal: ${data.goalName}`,
+    date: Timestamp.fromDate(now),
+    source: "goal",
+    goalId: data.goalId,           // ← important
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    const docRef = await addDoc(txRef, payload);
+    console.log(`✅ Goal contribution transaction saved with ID: ${docRef.id}`);
+    return docRef.id;
+  } catch (error) {
+    const errorDetails = getSafeErrorDetails(error);
+    console.error("❌ Error saving goal contribution transaction:", errorDetails);
+    throw error;
+  }
+}
+
+export async function deleteTransactionAndRevertGoal(
+  uid: string,
+  transactionId: string
+): Promise<void> {
+  console.log(`🗑️ Deleting transaction with goal revert, UID: ${uid}, ID: ${transactionId}`);
+
+  if (!uid || uid.trim() === "") {
+    throw new Error("❌ Invalid UID provided");
+  }
+  if (!transactionId || transactionId.trim() === "") {
+    throw new Error("❌ Invalid transaction ID");
+  }
+
+  try {
+    // 1) fetch transaction
+    const tx = await getTransactionById(uid, transactionId);
+    if (!tx) {
+      console.log("⚠️ Transaction not found, nothing to revert");
+      return;
+    }
+
+    // 2) if it's a goal contribution, revert savedSoFar
+    if (tx.source === "goal" && (tx as any).goalId && tx.amount) {
+      const goalId = (tx as any).goalId as string;
+      console.log(`🔁 Reverting goal ${goalId} by -${tx.amount}`);
+      await addToGoalSaved(uid, goalId, -tx.amount); // negative amount = subtract
+    }
+
+    // 3) delete transaction document
+    const transactionRef = doc(db, "users", uid, "transactions", transactionId);
+    await deleteDoc(transactionRef);
+    console.log(`✅ Transaction ${transactionId} deleted (with goal revert if needed)`);
+  } catch (error) {
+    const errorDetails = getSafeErrorDetails(error);
+    console.error("❌ Error deleting transaction with goal revert:", errorDetails);
+    throw error;
   }
 }

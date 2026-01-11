@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+// app/add.tsx
+
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,11 +11,12 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 
 import { useTransactions } from "../context/TransactionContext";
 import { saveManualTransactionToFirestore } from "../services/firestoreTransactions";
@@ -49,12 +52,12 @@ export const ALL_CATEGORIES = [
   "Technology & Software",
 
   // Fallback
-  "Other Expense", // ✅ IMPORTANT
+  "Other Expense",
 ];
-
 
 export default function AddTransactionScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { user } = useAuth();
   const { dispatch } = useTransactions();
 
@@ -70,6 +73,25 @@ export default function AddTransactionScreen() {
     setShowDatePicker(Platform.OS === "ios");
     if (selectedDate) setDate(selectedDate);
   };
+
+  // 🔒 Block back navigation while saving
+  useEffect(() => {
+    if (!loading) return;
+
+    const beforeRemove = navigation.addListener("beforeRemove", (e: any) => {
+      e.preventDefault();
+    });
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => true // block hardware back
+    );
+
+    return () => {
+      beforeRemove && beforeRemove();
+      backHandler.remove();
+    };
+  }, [loading, navigation]);
 
   const handleAddTransaction = async () => {
     if (!amount || parseFloat(amount) <= 0) {
@@ -89,33 +111,45 @@ export default function AddTransactionScreen() {
       return;
     }
 
+    // ✅ prevent double submit as early as possible
     setLoading(true);
+
+    const parsedAmount = parseFloat(amount);
+
+    // ✅ Optimistic transaction
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticTx = {
+      id: optimisticId,
+      amount: parsedAmount,
+      type,
+      category,
+      note: note.trim(),
+      date: date.toISOString(),
+      source: "manual",
+      uid: user.uid,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Transaction appears immediately in UI
+    dispatch({
+      type: "ADD_TRANSACTION",
+      payload: optimisticTx,
+    });
 
     try {
       const transactionId = await saveManualTransactionToFirestore(user.uid, {
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         type,
         category,
         note: note.trim(),
         date,
       });
 
-      const newTransaction = {
-        id: transactionId,
-        amount: parseFloat(amount),
-        type,
-        category,
-        note: note.trim(),
-        date: date.toISOString(),
-        source: "manual",
-        uid: user.uid,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
+      // Replace optimistic ID with real ID
       dispatch({
-        type: "ADD_TRANSACTION",
-        payload: newTransaction,
+        type: "REPLACE_TRANSACTION_ID",
+        payload: { oldId: optimisticId, newId: transactionId },
       });
 
       Alert.alert("Success", "Transaction added successfully!", [
@@ -132,6 +166,12 @@ export default function AddTransactionScreen() {
         },
       ]);
     } catch (error: any) {
+      // 🔁 Firestore failed → rollback optimistic item
+      dispatch({
+        type: "REMOVE_TRANSACTION",
+        payload: { id: optimisticId },
+      });
+
       Alert.alert("Error", error.message || "Failed to add transaction");
     } finally {
       setLoading(false);
@@ -142,29 +182,55 @@ export default function AddTransactionScreen() {
     <SafeAreaView style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#E5F3E5" />
+        <TouchableOpacity
+          onPress={() => {
+            if (!loading) router.back();
+          }}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={22} color="#e5f3e5" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Transaction</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* TYPE */}
         <View style={styles.typeContainer}>
           <TouchableOpacity
-            style={[styles.typeButton, type === "expense" && styles.typeButtonActive]}
+            style={[
+              styles.typeButton,
+              type === "expense" && styles.typeButtonActive,
+            ]}
             onPress={() => setType("expense")}
+            disabled={loading}
           >
-            <Text style={[styles.typeText, type === "expense" && styles.typeTextActive]}>
+            <Text
+              style={[
+                styles.typeText,
+                type === "expense" && styles.typeTextActive,
+              ]}
+            >
               Expense
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.typeButton, type === "income" && styles.typeButtonActive]}
+            style={[
+              styles.typeButton,
+              type === "income" && styles.typeButtonActive,
+            ]}
             onPress={() => setType("income")}
+            disabled={loading}
           >
-            <Text style={[styles.typeText, type === "income" && styles.typeTextActive]}>
+            <Text
+              style={[
+                styles.typeText,
+                type === "income" && styles.typeTextActive,
+              ]}
+            >
               Income
             </Text>
           </TouchableOpacity>
@@ -178,10 +244,11 @@ export default function AddTransactionScreen() {
             <TextInput
               style={styles.amountInput}
               placeholder="0.00"
-              placeholderTextColor="#6B7280"
+              placeholderTextColor="#64748b"
               value={amount}
               onChangeText={setAmount}
               keyboardType="decimal-pad"
+              editable={!loading}
             />
           </View>
         </View>
@@ -192,18 +259,23 @@ export default function AddTransactionScreen() {
           <TextInput
             style={styles.input}
             placeholder="What was this for?"
-            placeholderTextColor="#6B7280"
+            placeholderTextColor="#64748b"
             value={note}
             onChangeText={setNote}
             multiline
+            editable={!loading}
           />
         </View>
 
         {/* DATE */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Date</Text>
-          <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-            <Ionicons name="calendar-outline" size={20} color="#6EE7B7" />
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => !loading && setShowDatePicker(true)}
+            disabled={loading}
+          >
+            <Ionicons name="calendar-outline" size={18} color="#6ee7b7" />
             <Text style={styles.dateText}>
               {date.toLocaleDateString("en-IN")}
             </Text>
@@ -229,7 +301,8 @@ export default function AddTransactionScreen() {
                   styles.categoryChip,
                   category === cat && styles.categoryChipSelected,
                 ]}
-                onPress={() => setCategory(cat)}
+                onPress={() => !loading && setCategory(cat)}
+                disabled={loading}
               >
                 <Text
                   style={[
@@ -253,10 +326,10 @@ export default function AddTransactionScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#020B06" />
+            <ActivityIndicator color="#020617" />
           ) : (
             <>
-              <Ionicons name="add-circle" size={20} color="#020B06" />
+              <Ionicons name="add-circle" size={20} color="#020617" />
               <Text style={styles.addButtonText}>Add Transaction</Text>
             </>
           )}
@@ -266,81 +339,187 @@ export default function AddTransactionScreen() {
   );
 }
 
-/* ---------- STYLES (UNCHANGED) ---------- */
+/* ---------- HOME-THEME STYLES, LOGIC UNCHANGED ---------- */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#020B06" },
+  container: { flex: 1, backgroundColor: "#000" },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#1A231E",
+    borderBottomColor: "#1e293b",
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "#132016",
-    justifyContent: "center",
+    borderRadius: 14,
+    backgroundColor: "#0f172a",
     alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#1e293b",
   },
-  headerTitle: { color: "#E5F3E5", fontSize: 18, fontWeight: "600" },
-  content: { padding: 16 },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 120,
+    paddingTop: 10,
+  },
+
+  // Type toggle
   typeContainer: {
     flexDirection: "row",
-    backgroundColor: "#132016",
-    borderRadius: 12,
+    backgroundColor: "#0f172a",
+    borderRadius: 18,
     padding: 4,
+    borderWidth: 1,
+    borderColor: "#1e293b",
     marginBottom: 24,
   },
-  typeButton: { flex: 1, padding: 12, alignItems: "center" },
-  typeButtonActive: { backgroundColor: "#4ADE80", borderRadius: 8 },
-  typeText: { color: "#9CA3AF", fontWeight: "600" },
-  typeTextActive: { color: "#020B06" },
-  inputGroup: { marginBottom: 24 },
-  label: { color: "#E5F3E5", marginBottom: 8, fontWeight: "600" },
+  typeButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 14,
+  },
+  typeButtonActive: {
+    backgroundColor: "#1e293b",
+  },
+  typeText: {
+    color: "#64748b",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  typeTextActive: {
+    color: "#10b981",
+  },
+
+  inputGroup: {
+    marginBottom: 22,
+  },
+  label: {
+    color: "#94a3b8",
+    marginBottom: 8,
+    fontWeight: "700",
+    fontSize: 13,
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
+  },
+
   amountContainer: {
     flexDirection: "row",
-    backgroundColor: "#132016",
-    borderRadius: 12,
-    padding: 16,
+    alignItems: "center",
+    backgroundColor: "#0f172a",
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: "#1e293b",
   },
-  currencySymbol: { fontSize: 24, color: "#4ADE80", marginRight: 8 },
-  amountInput: { flex: 1, fontSize: 28, color: "#E5F3E5" },
+  currencySymbol: {
+    fontSize: 26,
+    color: "#10b981",
+    marginRight: 8,
+    fontWeight: "700",
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: 28,
+    color: "#f9fafb",
+    fontWeight: "700",
+  },
+
   input: {
-    backgroundColor: "#132016",
-    borderRadius: 12,
-    padding: 16,
-    color: "#E5F3E5",
+    backgroundColor: "#0f172a",
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: "#e5f3e5",
+    borderWidth: 1,
+    borderColor: "#1e293b",
+    fontSize: 14,
   },
+
   dateButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#132016",
-    padding: 16,
-    borderRadius: 12,
-  },
-  dateText: { marginLeft: 12, color: "#E5F3E5" },
-  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  categoryChip: {
+    backgroundColor: "#0f172a",
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 20,
-    backgroundColor: "#374151",
+    borderWidth: 1,
+    borderColor: "#1e293b",
   },
-  categoryChipSelected: { backgroundColor: "#4ADE80" },
-  categoryText: { color: "#9CA3AF" },
-  categoryTextSelected: { color: "#020B06" },
-  footer: { padding: 16 },
+  dateText: {
+    marginLeft: 10,
+    color: "#e5f3e5",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+    backgroundColor: "#0f172a",
+    borderWidth: 1,
+    borderColor: "#1e293b",
+  },
+  categoryChipSelected: {
+    backgroundColor: "#10b981",
+    borderColor: "#10b981",
+  },
+  categoryText: {
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  categoryTextSelected: {
+    color: "#020617",
+  },
+
+  footer: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#020617",
+    backgroundColor: "#000",
+  },
   addButton: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#4ADE80",
-    padding: 16,
-    borderRadius: 12,
+    justifyContent: "center",
+    backgroundColor: "#10b981",
+    paddingVertical: 14,
+    borderRadius: 18,
+    shadowColor: "#10b981",
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
-  addButtonDisabled: { opacity: 0.7 },
-  addButtonText: { marginLeft: 8, fontWeight: "600", color: "#020B06" },
+  addButtonDisabled: {
+    opacity: 0.7,
+  },
+  addButtonText: {
+    marginLeft: 8,
+    fontWeight: "700",
+    fontSize: 15,
+    color: "#020617",
+  },
 });

@@ -151,6 +151,12 @@ const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     defaultGoal: 0,
     description: "Money transfers to other accounts",
   },
+  "Goal Contribution": {
+    icon: "target",
+    color: "#7c8331",          // green for saving/progress
+    defaultGoal: 0,
+    description: "Money moved into saving goals",
+  },
 };
 
 const NON_SELECTABLE_CATEGORIES = ["Income / Transfer In", "Transfer Out"];

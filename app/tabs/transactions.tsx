@@ -29,6 +29,10 @@ import {
 import { useAuth } from "../../services/AuthContext";
 import type { Transaction } from "../../types/transaction";
 import { useRouter } from "expo-router";
+import { 
+  deleteTransactionAndRevertGoal,
+} from "../../services/firestoreTransactions";
+
 
 /* ------------------- HELPERS ------------------- */
 const MONTHS = [
@@ -78,8 +82,7 @@ const CATEGORIES = [
   "Vehicle Maintenance",
   "Child & Family",
   "Technology & Software",
-
-  // Fallback
+  "Goal Contribution",  // Fallback
   "Other Expense",
 ];
 
@@ -242,7 +245,7 @@ export default function TransactionsScreen() {
               console.log(`🗑️ Deleting transaction: ${transaction.id}`);
               
               // Delete from Firestore
-              await deleteTransactionFromFirestore(user.uid, transaction.id);
+               await deleteTransactionAndRevertGoal(user.uid, transaction.id);
               
               // Delete from local state
               dispatch({
@@ -345,7 +348,7 @@ export default function TransactionsScreen() {
                 item.source === "manual" ? styles.manualBadge : styles.bankBadge
               ]}>
                 <Text style={styles.sourceBadgeText}>
-                  {item.source === "manual" ? "Manual" : "Bank"}
+                  {item.source === "manual" ? "Manual" : item.source === "goal" ? "Goal" : "Bank"}
                 </Text>
               </View>
             </View>
@@ -408,7 +411,7 @@ export default function TransactionsScreen() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Source:</Text>
               <Text style={styles.detailValue}>
-                {item.source === "manual" ? "Added Manually" : "Bank Statement"}
+                {item.source === "manual" ? "Added Manually" : item.source === "goal" ? "Goal Transaction" : "Bank Statement"}
               </Text>
             </View>
 
@@ -535,26 +538,7 @@ export default function TransactionsScreen() {
                   <Ionicons name="search" size={20} color="#E5F3E5" />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[
-                    styles.iconButton,
-                    activeButton === 'upload' && styles.iconButtonActive
-                  ]}
-                  onPress={() => {
-                    setActiveButton('upload');
-                    handleUpload();
-                  }}
-                  disabled={uploading}
-                >
-
-
-                  {uploading ? (
-
-                    <ActivityIndicator size="small" color="#E5F3E5" />
-                  ) : (
-                    <Ionicons name="cloud-upload-outline" size={20} color="#E5F3E5"  />
-                  )}
-                </TouchableOpacity>
+                
 
                 <TouchableOpacity
                   style={[
