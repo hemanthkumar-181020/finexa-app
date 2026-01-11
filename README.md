@@ -203,16 +203,17 @@ npx eas submit --platform android   # Submit to Play Store
         <sub><b>Hemanth Kumar</b></sub>
       </a>
     </td>
+     <td align="center">
+      <a href="https://github.com/Preethamchegu">
+        <sub><b>Preetham Chegu</b></sub>
+      </a>
+    </td>
     <td align="center">
       <a href="https://github.com/reddy1307">
         <sub><b>Santhosh Reddy</b></sub>
       </a>
     </td>
-    <td align="center">
-      <a href="https://github.com/Preethamchegu">
-        <sub><b>Preetham Chegu</b></sub>
-      </a>
-    </td>
+   
   </tr>
 </table>
 
