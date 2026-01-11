@@ -1,4 +1,4 @@
-// app/goals/edit.tsx
+
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -18,7 +18,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { auth, db } from "../../services/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
-// Category config (same as home screen)
+// Category config 
 const CATEGORY_CONFIG = {
   "Food & Dining": {
     icon: "silverware-fork-knife",
@@ -345,7 +345,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
   },
 
-  /* HEADER */
   header: {
     flexDirection: "row",
     alignItems: "center",

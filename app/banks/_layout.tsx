@@ -1,4 +1,4 @@
-// //layout.tsx
+
 // import { Stack } from 'expo-router';
 
 // export default function bankLayout() {
@@ -19,11 +19,11 @@ export default function BankLayout() {
       <Stack.Screen 
       name="phonepe" 
       options={{
-        presentation: 'transparentModal', // This is key
+        presentation: 'transparentModal',
         animation: 'fade',
         gestureEnabled: true,
         gestureDirection: 'vertical',
-        contentStyle: { backgroundColor: 'transparent' }, // Important!
+        contentStyle: { backgroundColor: 'transparent' }, 
       }}
 />
       <Stack.Screen 

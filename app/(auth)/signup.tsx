@@ -395,7 +395,7 @@ export default function Signup() {
                   </Text>
                 </TouchableOpacity>
                 {errors.tos && <Text style={styles.errorText}>{errors.tos}</Text>}
-                {/* Add this simple toggle */}
+                
 
                 {/* Submit Button */}
                 <TouchableOpacity

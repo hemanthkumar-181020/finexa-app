@@ -43,19 +43,17 @@ export default function Login() {
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: '898226239130-flo9kagl8vtuv5bg4g8g7igegnk8ua18.apps.googleusercontent.com',
     iosClientId: '<YOUR_IOS_CLIENT_ID>',
-    // expoClientId: '898226239130-v26hhs3onrsafhbg59035bc0jfqj50d2.apps.googleusercontent.com',
     webClientId: '<YOUR_WEB_CLIENT_ID>',
-    responseType: 'code', // ✅ Authorization code flow
-  usePKCE: true, // ✅ PKCE enabled
-  scopes: ['profile', 'email'],     // required for secure flow
+    responseType: 'code', 
+  usePKCE: true, 
+  scopes: ['profile', 'email'],  
   });
 
-  // Fade-in animation
+ 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
   }, [fadeAnim]);
 
-  // Google Sign-In handler
   const handleForgotPassword = async () => {
   if (!email || !email.includes('@')) {
     Alert.alert(
@@ -86,13 +84,13 @@ export default function Login() {
 };
 
   
-// CHANGE TO THIS:
+
 useEffect(() => {
   if (response?.type === 'success') {
     const { authentication } = response;
     
     if (authentication?.idToken) {
-      // For id_token flow (backward compatibility)
+      
       const credential = GoogleAuthProvider.credential(authentication.idToken);
       signInWithCredential(auth, credential)
         .then(async () => {
@@ -108,23 +106,20 @@ useEffect(() => {
         })
         .catch(err => Alert.alert('Google Sign-In failed', err.message));
     } else if (response.params?.code) {
-      // For authorization code flow
-      // You need to exchange the code for tokens
+      
       Alert.alert('Authorization code received', 'Implement token exchange');
-      // Add token exchange logic here
+      
     }
   }
 }, [response, router]);
 
-  // Input focus and blur
   const handleInputFocus = (inputName: string) => { setFocusedInput(inputName); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
   const handleInputBlur = () => setFocusedInput(null);
 
-  // Button animation
+ 
   const handlePressIn = () => Animated.spring(buttonScale, { toValue: 0.96, ...AnimationConfig.spring, useNativeDriver: true }).start();
   const handlePressOut = () => Animated.spring(buttonScale, { toValue: 1, ...AnimationConfig.spring, useNativeDriver: true }).start();
 
-  // Form validation
   const validateForm = () => {
     let errors: FormErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -137,7 +132,7 @@ useEffect(() => {
     return Object.keys(errors).length === 0;
   };
 
-  // Submit email/password login
+ 
   const submit = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!validateForm()) { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); return; }
@@ -158,7 +153,7 @@ useEffect(() => {
 
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
-      // 🔐 BLOCK UNVERIFIED EMAIL USERS
+     
       if (!user.emailVerified) {
         await auth.signOut();
 
@@ -270,7 +265,7 @@ useEffect(() => {
   );
 }
 
-// ✅ Your original styles unchanged
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'white' },
   safeArea: { flex: 1 },

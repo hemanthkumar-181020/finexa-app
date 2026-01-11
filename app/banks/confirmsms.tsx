@@ -108,7 +108,7 @@ export default function ConfirmSMS() {
             type: type === "expense" ? "DEBIT" : "CREDIT",
             category,
             description: note.trim(),
-            date: safeDate, // pass Date object
+            date: safeDate, 
             utr,
             source: "bank",
           },
@@ -125,7 +125,7 @@ export default function ConfirmSMS() {
           type,
           category,
           note: note.trim(),
-          date: safeDate, // pass Date object
+          date: safeDate, 
         });
         Alert.alert(
           "Transaction saved!",
@@ -270,7 +270,6 @@ export default function ConfirmSMS() {
   );
 }
 
-// Styles (reuse from add.tsx)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#020B06" },
   header: {

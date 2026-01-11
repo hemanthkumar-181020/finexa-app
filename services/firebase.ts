@@ -35,4 +35,4 @@ try {
 
 export { auth };
 export const db = getFirestore(app);
-export const storage = getStorage(app); // ✅ Initialize storage
+export const storage = getStorage(app); 

@@ -1,11 +1,4 @@
-// export const CATEGORY_RULES: Record<string, RegExp[]> = {
-//   Food: [/swiggy/i, /zomato/i, /restaurant/i, /hotel/i, /cafe/i,/food/i],
-//   Transport: [/uber/i, /ola/i, /rapido/i, /bus/i, /metro/i,/transport/i],
-//   Shopping: [/amazon/i, /flipkart/i, /myntra/i,/shopping/i],
-//   Bills: [/electricity/i, /recharge/i, /wifi/i, /airtel/i, /jio/i,/Bills/i],
-//   Salary: [/salary/i, /payroll/i,/salary/i],
-// };
-// categories.ts
+
 
 export const CATEGORY_RULES: Record<string, RegExp[]> = {
   // Income Categories
