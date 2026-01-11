@@ -22,7 +22,6 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 - Add, edit, and delete income/expense transactions
 - Categorized transaction tracking (Food, Transportation, Entertainment, etc.)
 - Real-time transaction updates with Firestore
-- Local storage fallback for offline access
 
 ### 📊 Financial Visualization
 - **Expense Pie Charts** - Visual breakdown of spending by category
@@ -30,10 +29,10 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 - **Financial Dashboard** - At-a-glance overview of your finances
 - Monthly/Weekly spending analysis
 
-### 🏦 Bank Integration
-- SBI Bank API integration
-- PhonePe payment integration
-- Support for multiple bank accounts
+### 🏦 Transactions From Banks Pdf 
+- SBI Bank pdf
+- PhonePe pdf
+- Support for multiple bank pdfs
 - Secure transaction synchronization
 
 ### 📱 User Experience
