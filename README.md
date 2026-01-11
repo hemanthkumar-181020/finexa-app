@@ -9,36 +9,34 @@
 
 A modern, cross-platform mobile application for comprehensive personal finance management.
 
-[Features](#features) | [Installation](#installation) | [Project Structure](#project-structure) | [Contributors](#contributors)
-
 </div>
 
 ## ✨ Features
 
-### 🔐 **Authentication & Security**
+### 🔐 Authentication & Security
 - Secure user registration and login with Firebase Authentication
 - Email verification and password reset functionality
 - Secure token management and session persistence
 
-### 💳 **Transaction Management**
+### 💳 Transaction Management
 - Add, edit, and delete income/expense transactions
 - Categorized transaction tracking (Food, Transportation, Entertainment, etc.)
 - Real-time transaction updates with Firestore
 - Local storage fallback for offline access
 
-### 📊 **Financial Visualization**
+### 📊 Financial Visualization
 - **Expense Pie Charts** - Visual breakdown of spending by category
 - **Spending Heatmaps** - Track spending patterns over time
 - **Financial Dashboard** - At-a-glance overview of your finances
 - Monthly/Weekly spending analysis
 
-### 🏦 **Bank Integration**
+### 🏦 Bank Integration
 - SBI Bank API integration
 - PhonePe payment integration
 - Support for multiple bank accounts
 - Secure transaction synchronization
 
-### 📱 **User Experience**
+### 📱 User Experience
 - Clean, modern design with intuitive navigation
 - Tab-based navigation system
 - Responsive layout for all device sizes
@@ -46,26 +44,21 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 
 ## 🛠️ Tech Stack
 
-### **Frontend**
+### Frontend
 - **React Native** - Mobile app framework
 - **Expo** - Development platform
 - **TypeScript** - Type-safe JavaScript
 - **Expo Router** - File-based navigation
 
-### **Backend Services**
+### Backend Services
 - **Firebase Authentication** - User management
 - **Cloud Firestore** - Real-time database
 - **Firebase Storage** - File storage
 
-### **State Management**
+### State Management
 - **React Context API** - Global state management
 - **Custom Hooks** - Reusable logic
 - **Local Storage** - Offline data persistence
-
-### **Development Tools**
-- **ESLint** - Code linting
-- **Expo Application Services (EAS)** - Build services
-- **Git** - Version control
 
 ## 🚀 Installation
 
@@ -81,3 +74,154 @@ A modern, cross-platform mobile application for comprehensive personal finance m
    ```bash
    git clone https://github.com/hemanthkumar-181020/finexa-app.git
    cd finexa-app
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. **Firebase Configuration**
+   - Create a Firebase project at [firebase.google.com](https://firebase.google.com)
+   - Enable Authentication and Firestore
+   - Download configuration files:
+     - `GoogleService-Info.plist` (iOS)
+     - `google-services.json` (Android)
+   - Place these files in the project root directory
+
+4. **Start Development**
+   ```bash
+   npx expo start
+   ```
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
+   - Scan QR code with Expo Go app
+
+## 📁 Project Structure
+
+```
+finexa-app/
+├── app/                    # App screens (file-based routing)
+│   ├── (auth)/            # Authentication screens
+│   ├── (tabs)/            # Tab navigation screens
+│   ├── _layout.tsx        # Root layout
+│   └── index.tsx          # Home screen
+├── assets/images/         # Images and UI assets
+├── components/            # Reusable UI components
+├── constants/             # App constants and config
+├── context/               # React Context providers
+├── hooks/                 # Custom React hooks
+├── reducers/              # State reducers
+├── services/              # External services
+│   ├── firebase/          # Firebase services
+│   └── banking/           # Bank API integrations
+├── types/                 # TypeScript type definitions
+├── utils/                 # Utility functions
+└── scripts/               # Build and utility scripts
+```
+
+## 🔧 Available Scripts
+
+```bash
+# Development
+npm start                 # Start Expo development server
+npm run android          # Run on Android device/emulator
+npm run ios              # Run on iOS simulator
+npm run web              # Run web version
+
+# Project Management
+npm run reset-project    # Reset to fresh project state
+npx expo prebuild        # Generate native project files
+
+# Production Builds
+npx eas build --platform android    # Build for Android
+npx eas build --platform ios        # Build for iOS
+npx eas submit --platform ios       # Submit to App Store
+npx eas submit --platform android   # Submit to Play Store
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/AmazingFeature`
+3. Commit your changes: `git commit -m 'Add some AmazingFeature'`
+4. Push to the branch: `git push origin feature/AmazingFeature`
+5. Open a Pull Request
+
+### Development Guidelines
+- Follow TypeScript best practices
+- Use functional components with hooks
+- Write meaningful commit messages
+- Test on both iOS and Android
+- Update documentation as needed
+
+## 👥 Contributors
+
+Thanks to these wonderful contributors:
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/hemanthkumar-181020">
+        <img src="https://avatars.githubusercontent.com/u/150165710?v=4" width="100px;" alt="Hemanth Kumar"/>
+        <br />
+        <sub><b>Hemanth Kumar</b></sub>
+      </a>
+      <br />
+      Project Owner & Maintainer
+    </td>
+    <td align="center">
+      <a href="https://github.com/reddy1307">
+        <img src="https://avatars.githubusercontent.com/u/150165710?v=4" width="100px;" alt="Santhosh Reddy"/>
+        <br />
+        <sub><b>Santhosh Reddy</b></sub>
+      </a>
+      <br />
+      UI/UX Development
+    </td>
+    <td align="center">
+      <a href="https://github.com/Preethamchegu">
+        <img src="https://avatars.githubusercontent.com/u/150165710?v=4" width="100px;" alt="Preetham Chegu"/>
+        <br />
+        <sub><b>Preetham Chegu</b></sub>
+      </a>
+      <br />
+      Feature Development
+    </td>
+  </tr>
+</table>
+
+## 📄 License
+
+This project is currently not licensed for public use. All rights reserved.
+
+## 🔗 Useful Links
+
+- [Expo Documentation](https://docs.expo.dev/)
+- [React Native Docs](https://reactnative.dev/docs/getting-started)
+- [Firebase Documentation](https://firebase.google.com/docs)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+
+## 🙏 Acknowledgments
+
+- [Expo Team](https://expo.dev/) for the amazing development platform
+- [Firebase Team](https://firebase.google.com/) for backend services
+- All contributors and testers
+
+## 📞 Support
+
+For support, please open an issue in the GitHub repository.
+
+---
+
+<div align="center">
+  
+**Finexa** - Take control of your finances, one transaction at a time! 💪
+
+*Last Updated: January 2026 | Version: 1.0.0*
+
+</div>
