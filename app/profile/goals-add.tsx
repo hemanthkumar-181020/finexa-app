@@ -13,13 +13,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useAuth } from "../../services/AuthContext";
-import { deleteTransactionAndRevertGoal } from "../../services/firestoreTransactions";
 import {
   createGoal,
   updateGoal,
   getUserGoals,
   Goal,
 } from "../../services/firestoreGoals";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 export default function GoalsAddScreen() {
   const router = useRouter();
@@ -35,6 +35,9 @@ export default function GoalsAddScreen() {
   const [targetAmount, setTargetAmount] = useState("");
   const [targetMonth, setTargetMonth] = useState(""); // "YYYY-MM"
 
+  const [showPicker, setShowPicker] = useState(false);
+  const [targetDate, setTargetDate] = useState<Date | null>(null);
+
   const isEdit = !!goalId;
 
   useEffect(() => {
@@ -49,12 +52,21 @@ export default function GoalsAddScreen() {
           setName(g.name);
           setTargetAmount(g.targetAmount.toString());
           setTargetMonth(g.targetMonth);
+
+          // parse "YYYY-MM" into Date (1st day of that month)
+          if (g.targetMonth) {
+            const [yearStr, monthStr] = g.targetMonth.split("-");
+            const year = Number(yearStr);
+            const month = Number(monthStr);
+            if (!isNaN(year) && !isNaN(month)) {
+              setTargetDate(new Date(year, month - 1, 1));
+            }
+          }
         }
       } catch (e) {
         console.error("Error loading goal:", e);
       } finally {
         setLoading(false);
-
       }
     };
     loadGoal();
@@ -75,7 +87,7 @@ export default function GoalsAddScreen() {
       return;
     }
     if (!targetMonth || !/^\d{4}-\d{2}$/.test(targetMonth)) {
-      Alert.alert("Error", "Please enter target month as YYYY-MM");
+      Alert.alert("Error", "Please select a valid target month (YYYY-MM)");
       return;
     }
 
@@ -154,16 +166,48 @@ export default function GoalsAddScreen() {
           </View>
         </View>
 
-        {/* TARGET MONTH */}
+        {/* TARGET MONTH WITH DATE PICKER */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Target Month</Text>
-          <TextInput
+
+          <TouchableOpacity
             style={styles.input}
-            placeholder="YYYY-MM (e.g. 2026-12)"
-            placeholderTextColor="#64748b"
-            value={targetMonth}
-            onChangeText={setTargetMonth}
-          />
+            activeOpacity={0.8}
+            onPress={() => setShowPicker(true)}
+          >
+            <Text
+              style={{
+                color: targetMonth ? "#e5f3e5" : "#64748b",
+                fontSize: 14,
+              }}
+            >
+              {targetMonth || "Select month (YYYY-MM)"}
+            </Text>
+          </TouchableOpacity>
+
+          {showPicker && (
+            <DateTimePicker
+              value={targetDate || new Date()}
+              mode="date"
+              display="spinner"
+              onChange={(event, date) => {
+                if (event.type === "dismissed") {
+                  setShowPicker(false);
+                  return;
+                }
+                if (date) {
+                  setShowPicker(false);
+                  setTargetDate(date);
+
+                  const year = date.getFullYear();
+                  const month = (date.getMonth() + 1)
+                    .toString()
+                    .padStart(2, "0");
+                  setTargetMonth(`${year}-${month}`);
+                }
+              }}
+            />
+          )}
         </View>
 
         <View style={styles.infoBox}>
