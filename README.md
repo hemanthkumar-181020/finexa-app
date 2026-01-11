@@ -196,26 +196,23 @@ npx eas submit --platform android   # Submit to Play Store
 
 ## 👥 Contributors
 
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/hemanthkumar-181020">
-        <sub><b>Hemanth Kumar</b></sub>
-      </a>
-    </td>
-     <td align="center">
-      <a href="https://github.com/Preethamchegu">
-        <sub><b>Preetham Chegu</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/reddy1307">
-        <sub><b>Santhosh Reddy</b></sub>
-      </a>
-    </td>
-   
-  </tr>
-</table>
+<div style="display: flex; justify-content: center; gap: 40px; margin: 20px 0;">
+  <div style="text-align: center;">
+    <a href="https://github.com/hemanthkumar-181020" style="text-decoration: none; color: #333;">
+      <b>Hemanth Kumar</b>
+    </a>
+  </div>
+  <div style="text-align: center;">
+    <a href="https://github.com/Preethamchegu" style="text-decoration: none; color: #333;">
+      <b>Preetham Chegu</b>
+    </a>
+  </div>
+  <div style="text-align: center;">
+    <a href="https://github.com/reddy1307" style="text-decoration: none; color: #333;">
+      <b>Santhosh Reddy</b>
+    </a>
+  </div>
+</div>
 
 ## 🔗 Useful Links
 
