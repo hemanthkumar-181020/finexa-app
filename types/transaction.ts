@@ -6,7 +6,7 @@ export type Transaction = {
   category: string;
   date: string; // ISO date string
   note?: string;
-  source: 'bank' | 'manual';
+  source: 'bank' | 'manual'|'goal';
   utr?: string; // Optional - only present for bank transactions with UTR
   createdAt?: string;
   updatedAt?: string;

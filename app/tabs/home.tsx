@@ -420,7 +420,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.budgetCard}
             activeOpacity={0.9}
-            onPress={() => router.push("/analysis")}
+            onPress={() => router.push("./budgets")}
           >
             <View style={styles.cardHeader}>
               <Text style={styles.cardLabel}>Remaining Budget</Text>

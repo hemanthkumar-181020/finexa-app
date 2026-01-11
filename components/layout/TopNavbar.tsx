@@ -159,7 +159,7 @@ export function TopNavbar() {
 
         <TouchableOpacity
           style={[styles.iconButton, { backgroundColor: "#0f172a" }]}
-          onPress={() => router.push("/")}
+          onPress={() => router.push("/reminders")}
         >
           <Ionicons
             name="notifications-outline"
@@ -234,13 +234,14 @@ export function TopNavbar() {
                   />
                   <View style={styles.divider} />
                   <DrawerItem
-                    icon="alarm"
-                    title="Reminders"
-                    subtitle="Manage notifications"
-                    route="/reminders"
-                    color="#b45309"
-                    isMCI
-                  />
+  icon="trending-up-outline" // Focuses on the "Future" and growth direction
+  title="Forecast"
+  subtitle="Predictive spending"
+  route="/tabs/analytics"
+  color="#0EA5E9" 
+/>
+
+                  
                 </View>
 
                 <Text style={styles.groupLabel}>Automation</Text>
@@ -258,9 +259,20 @@ export function TopNavbar() {
                     icon="chatbubble-ellipses-outline"
                     title="SMS Parsing"
                     subtitle="Auto-logging"
-                    route="/profile/sms"
+                    route="/tabs/banks"
                     color="#8b5cf6"
                   />
+                  <View style={styles.divider} />
+                  <DrawerItem
+                    icon="alarm"
+                    title="Reminders"
+                    subtitle="Manage notifications"
+                    route="/reminders"
+                    color="#b45309"
+                    isMCI
+                  />
+                  
+
                 </View>
 
                 <TouchableOpacity
