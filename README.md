@@ -200,22 +200,16 @@ npx eas submit --platform android   # Submit to Play Store
   <tr>
     <td align="center">
       <a href="https://github.com/hemanthkumar-181020">
-        <img src="https://avatars.githubusercontent.com/u/150165710?v=4" width="100px;" alt="Hemanth Kumar"/>
-        <br />
         <sub><b>Hemanth Kumar</b></sub>
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/reddy1307">
-        <img src="https://avatars.githubusercontent.com/u/150165710?v=4" width="100px;" alt="Santhosh Reddy"/>
-        <br />
         <sub><b>Santhosh Reddy</b></sub>
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/Preethamchegu">
-        <img src="https://avatars.githubusercontent.com/u/150165710?v=4" width="100px;" alt="Preetham Chegu"/>
-        <br />
         <sub><b>Preetham Chegu</b></sub>
       </a>
     </td>
