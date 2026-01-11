@@ -24,7 +24,7 @@ export async function importBankStatement(
     throw new Error('❌ Invalid PDF file');
   }
 
-  console.log('📤 Uploading PDF to parsing service...');
+
   
   const formData = new FormData();
   formData.append('file', {
@@ -49,11 +49,7 @@ export async function importBankStatement(
 
   const data: { transactions?: ParsedTransaction[]; count?: number } = await response.json();
 
-  console.log('📥 API Response received:', {
-    transactionCount: data.transactions?.length || 0,
-    hasUTRField: data.transactions?.[0]?.UTR_No ? 'Yes' : 'No',
-    sampleUTR: data.transactions?.[0]?.UTR_No || 'None'
-  });
+  
 
   if (!Array.isArray(data.transactions)) {
     throw new Error('❌ Invalid response format from PDF service');
@@ -81,7 +77,7 @@ export async function importBankStatement(
     };
   });
 
-  console.log(`📊 Found ${transformedTransactions.length} transactions in PDF`);
+
   
   // Check UTRs
   const transactionsWithUTR = transformedTransactions.filter(t => t.utr);

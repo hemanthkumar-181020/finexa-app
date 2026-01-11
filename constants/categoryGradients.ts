@@ -1,12 +1,6 @@
-// app/constants/categoryGradients.ts
 
-/**
- * Category gradient colors mapping
- * Format: [darkColor, lightColor]
- * Used across the app for consistent category visualization.
- */
 export const CATEGORY_GRADIENTS: Record<string, readonly [string, string]> = {
-  // Income/Transfer
+
   "Income / Transfer In": ["#059669", "#10B981"],
 
   // Core Expenses

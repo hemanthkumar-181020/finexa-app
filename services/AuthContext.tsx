@@ -40,9 +40,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (Platform.OS !== 'web') return;
     
     try {
-      console.log('[AuthContext] 🧹 Clearing web storage...');
       
-      // 1. Clear localStorage (Firebase stores tokens here)
       const firebaseKeys = Object.keys(localStorage).filter(key => 
         key.includes('firebase') || 
         key.includes('google') || 
@@ -72,7 +70,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               dbInfo.name.includes('Firebase') ||
               dbInfo.name === 'firebaseLocalStorageDb'
             )) {
-              console.log(`Deleting IndexedDB: ${dbInfo.name}`);
+              
               window.indexedDB.deleteDatabase(dbInfo.name);
             }
           });
@@ -105,7 +103,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         });
       }
       
-      console.log('[AuthContext] ✅ Web storage cleared');
+      
       
     } catch (error) {
       console.error('[AuthContext] ❌ Error clearing web storage:', error);
@@ -115,18 +113,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Function to fetch user profile
   const fetchUserProfile = async (firebaseUser: User): Promise<UserProfile> => {
     try {
-      console.log('[AuthContext] 📥 Fetching user profile for UID:', firebaseUser.uid);
       
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
       
       if (userDoc.exists()) {
         const data = userDoc.data();
-        console.log('[AuthContext] ✅ User profile found in Firestore');
-        
-        // Log theme specifically for debugging
-        console.log('[AuthContext] 🔍 Theme field in Firestore:', data.theme);
-        console.log('[AuthContext] 🔍 Full data keys:', Object.keys(data));
-        
         return {
           uid: firebaseUser.uid,
           username: data.username || firebaseUser.email?.split('@')[0] || '',
@@ -150,7 +141,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         try {
           await setDoc(doc(db, 'users', firebaseUser.uid), defaultProfile, { merge: true });
-          console.log('[AuthContext] ✅ Created default user profile');
+          
         } catch (writeError) {
           console.warn('[AuthContext] Could not create user profile:', writeError);
         }
@@ -175,12 +166,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshUser = async () => {
     const currentUser = auth.currentUser;
     if (currentUser) {
-      console.log('[AuthContext] 🔄 Manually refreshing user data...');
+      
       try {
         const profile = await fetchUserProfile(currentUser);
         setUser(currentUser);
         setUserProfile(profile);
-        console.log('[AuthContext] ✅ User data refreshed');
+      
       } catch (error) {
         console.error('[AuthContext] ❌ Error refreshing user:', error);
       }
@@ -195,7 +186,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
     
     try {
-      console.log(`[AuthContext] 🎨 Updating theme to: ${theme}`);
+      
       
       await updateDoc(doc(db, 'users', user.uid), {
         theme: theme,
@@ -208,7 +199,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.warn('[AuthContext] No userProfile to update');
           return prev;
         }
-        console.log(`[AuthContext] ✅ Local theme updated to: ${theme}`);
+        
         return { ...prev, theme };
       });
       
@@ -220,7 +211,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Function to clear ALL data (public API)
   const clearAllData = async () => {
-    console.log('[AuthContext] 🧹 Clearing all user data...');
+   
     setUser(null);
     setUserProfile(null);
     await clearWebStorage();
@@ -228,7 +219,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // FIXED SIGN OUT FUNCTION
   const signOut = async (): Promise<void> => {
-    console.log('[AuthContext] 🔐 Starting sign out process...');
+    
     
     try {
       // 1. Clear local React state FIRST
@@ -237,7 +228,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // 2. Sign out from Firebase
       await firebaseSignOut(auth);
-      console.log('[AuthContext] ✅ Firebase sign out successful');
+      
       
       // 3. Clear web storage (important for web!)
       await clearWebStorage();
@@ -254,7 +245,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       }
       
-      console.log('[AuthContext] 🎉 Sign out completed successfully');
+      
       
     } catch (error: any) {
       console.error('[AuthContext] ❌ Error during sign out:', error);
@@ -274,7 +265,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Set up auth state listener
   useEffect(() => {
-    console.log('[AuthContext] 🔥 Setting up auth listener...');
+   
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('[AuthContext] 🔄 Auth state changed:', 
@@ -289,14 +280,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Fetch user profile from Firestore
           const profile = await fetchUserProfile(firebaseUser);
           setUserProfile(profile);
-          
-          console.log('[AuthContext] ✅ User and profile loaded successfully');
-          console.log('[AuthContext] 📋 Profile details:', {
-            uid: profile.uid,
-            email: profile.email,
-            username: profile.username,
-            theme: profile.theme,
-          });
           
         } catch (error) {
           console.error('[AuthContext] ❌ Error during auth state change:', error);
@@ -339,23 +322,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     immediateCheck();
 
     return () => {
-      console.log('[AuthContext] 🧹 Cleaning up auth listener');
+      
       unsubscribe();
     };
   }, []);
 
   // Debug function
   const debugAuthState = () => {
-    console.log('[AuthContext] === DEBUG ===');
-    console.log('User:', user?.email || 'null');
-    console.log('User Profile:', userProfile?.email || 'null');
-    console.log('Current Theme:', userProfile?.theme || 'dark');
-    console.log('Firebase Current User:', auth.currentUser?.email || 'null');
-    console.log('Platform:', Platform.OS);
+    
     
     if (Platform.OS === 'web') {
-      console.log('LocalStorage keys:', Object.keys(localStorage));
-      console.log('SessionStorage keys:', Object.keys(sessionStorage));
+      
     }
   };
 

@@ -50,8 +50,7 @@ export async function saveTransactionsToFirestore(
   uid: string,
   transactions: any[],
 ): Promise<{ saved: number; skipped: number }> {
-  console.log(`🔥 saveTransactionsToFirestore called for UID: ${uid}`);
-  console.log(`📊 Processing ${transactions.length} transactions from bank statement`);
+  
   
   if (!uid || uid.trim() === '') {
     throw new Error('❌ Invalid UID provided');
@@ -71,11 +70,6 @@ export async function saveTransactionsToFirestore(
   let savedCount = 0;
   let skippedCount = 0;
 
-  // Log first few transactions for debugging
-  console.log('📝 First 3 transactions to save:');
-  transactions.slice(0, 3).forEach((t, i) => {
-    console.log(`  ${i + 1}. Amount: ${t.amount}, Type: ${t.type}, Date: ${t.date}, UTR: ${t.utr || 'NO UTR'}`);
-  });
 
   for (const [index, t] of transactions.entries()) {
     try {
@@ -204,8 +198,7 @@ export async function saveManualTransactionToFirestore(
     date?: Date;
   }
 ): Promise<string> {
-  console.log(`➕ Saving manual transaction for UID: ${uid}`);
-  console.log(`📝 Data: ${transactionData.note} - ₹${transactionData.amount} - ${transactionData.type}`);
+  
   
   const txRef = collection(db, 'users', uid, 'transactions');
   
@@ -286,18 +279,11 @@ export async function updateTransactionInFirestore(
         console.warn('⚠️ Invalid date format in update, skipping date update');
       }
     }
-    
-    // DO NOT update these fields:
-    // - id: Document ID (shouldn't change)
-    // - source: Preserve original source (manual/bank)
-    // - utr: Preserve original UTR (important for bank transactions)
-    // - uid: User ID (shouldn't change)
-    // - createdAt: Creation timestamp (should never change)
-    // - importedAt: Import timestamp (for bank transactions)
+   
     
     console.log(`📤 Final update payload to Firestore:`, updateData);
     
-    if (Object.keys(updateData).length > 1) { // More than just updatedAt
+    if (Object.keys(updateData).length > 1) { 
       await updateDoc(transactionRef, updateData);
       console.log(`✅ Transaction ${transactionId} updated successfully in Firestore`);
     } else {
@@ -543,7 +529,7 @@ export async function testFirestoreConnection(uid: string): Promise<boolean> {
     const docRef = await addDoc(testRef, testData);
     console.log('✅ Test document written with ID:', docRef.id);
     
-    // Try to read it back
+   
     console.log('📖 Attempting to read test document...');
     const q = query(testRef, where('__name__', '==', docRef.id));
     const snapshot = await getDocs(q);
