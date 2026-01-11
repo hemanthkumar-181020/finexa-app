@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimationConfig } from '../../constants/theme';
 import { db, auth } from '../../services/firebase';
 import { Svg, Path } from 'react-native-svg';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -42,7 +43,7 @@ export default function Login() {
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: '898226239130-flo9kagl8vtuv5bg4g8g7igegnk8ua18.apps.googleusercontent.com',
     iosClientId: '<YOUR_IOS_CLIENT_ID>',
-    expoClientId: '898226239130-v26hhs3onrsafhbg59035bc0jfqj50d2.apps.googleusercontent.com',
+    // expoClientId: '898226239130-v26hhs3onrsafhbg59035bc0jfqj50d2.apps.googleusercontent.com',
     webClientId: '<YOUR_WEB_CLIENT_ID>',
     responseType: 'code', // ✅ Authorization code flow
   usePKCE: true, // ✅ PKCE enabled
@@ -55,6 +56,35 @@ export default function Login() {
   }, [fadeAnim]);
 
   // Google Sign-In handler
+  const handleForgotPassword = async () => {
+  if (!email || !email.includes('@')) {
+    Alert.alert(
+      'Enter your email',
+      'Please enter a valid email address to reset your password.'
+    );
+    return;
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, email);
+
+    Alert.alert(
+      'Reset email sent',
+      'Check your inbox to reset your password.'
+    );
+  } catch (error: any) {
+    let message = 'Failed to send reset email';
+
+    if (error.code === 'auth/user-not-found') {
+      message = 'No account found with this email';
+    } else if (error.code === 'auth/invalid-email') {
+      message = 'Invalid email address';
+    }
+
+    Alert.alert('Error', message);
+  }
+};
+
   
 // CHANGE TO THIS:
 useEffect(() => {
@@ -128,6 +158,19 @@ useEffect(() => {
 
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
+      // 🔐 BLOCK UNVERIFIED EMAIL USERS
+      if (!user.emailVerified) {
+        await auth.signOut();
+
+        Alert.alert(
+          'Email not verified',
+          'Please verify your email before logging in. Check your inbox.'
+        );
+
+        setIsLoading(false);
+        return;
+      }
+
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists() || !userSnap.data().isProfileComplete) router.replace('/completeprofile');
@@ -197,9 +240,13 @@ useEffect(() => {
                   {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
                 </View>
 
-                <TouchableOpacity style={styles.forgotPassword}>
+                <TouchableOpacity
+                  style={styles.forgotPassword}
+                  onPress={handleForgotPassword}
+                >
                   <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
+
 
                 {/* Continue Button */}
                 <TouchableOpacity activeOpacity={0.8} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={submit} disabled={isLoading}>

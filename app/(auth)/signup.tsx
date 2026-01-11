@@ -9,6 +9,8 @@ import { Svg, Path } from 'react-native-svg';
 import { Switch} from 'react-native';
 
 import { MaterialIcons } from '@expo/vector-icons';
+import { sendEmailVerification } from 'firebase/auth';
+
 
 import {
   Alert,
@@ -157,6 +159,10 @@ export default function Signup() {
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+
+      // 🔐 SEND EMAIL VERIFICATION
+      await sendEmailVerification(user);
+
       const defaultPhotoURL = 'https://i.pravatar.cc/150?img=12';
       await setDoc(doc(db, 'users', user.uid), {
       // 🔑 Identity
@@ -193,7 +199,11 @@ export default function Signup() {
 
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Account created successfully');
+      Alert.alert(
+      'Verify your email',
+      'A verification link has been sent to your email. Please verify before logging in.'
+    );
+
 
       setUsername('');
       setEmail('');

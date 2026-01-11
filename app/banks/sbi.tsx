@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,15 @@ import {
   Alert,
   TextInput,
   ScrollView,
+  Animated,
+  Image,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { importSBIStatement } from '../../services/sbibankimport';
 import { useAuth } from '../../services/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 export default function SBIImportScreen() {
   const { user } = useAuth();
@@ -29,6 +31,31 @@ export default function SBIImportScreen() {
     message: string;
   }>(null);
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   const pickPDF = async () => {
     try {
       const res = await DocumentPicker.getDocumentAsync({
@@ -38,7 +65,7 @@ export default function SBIImportScreen() {
 
       if (!res.canceled && res.assets[0]) {
         setFile(res.assets[0]);
-        setResult(null); // Clear previous results
+        setResult(null);
       }
     } catch (error) {
       console.error('Error picking PDF:', error);
@@ -73,8 +100,6 @@ export default function SBIImportScreen() {
       );
 
       setResult(response);
-      
-      // Clear form after successful import
       setFile(null);
       setPassword('');
       
@@ -98,139 +123,224 @@ export default function SBIImportScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <LinearGradient 
-          colors={['#000', '#02140B']} 
-          style={styles.card}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.header}>
-           
-            <Text style={styles.title}>SBI Statement Import</Text>
-          </View>
-          
-          <Text style={styles.subtitle}>
-            Upload your SBI bank statement PDF (password protected)
-          </Text>
-
-          {/* File Selection */}
+      <Animated.View 
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [
+              { translateY: slideAnim },
+              { scale: scaleAnim },
+            ],
+          },
+        ]}
+      >
+        {/* Header with Back Button */}
+        <View style={styles.header}>
           <TouchableOpacity 
-            style={[styles.pickBox, file && styles.pickedBox]} 
-            onPress={pickPDF}
-            disabled={loading}
+            style={styles.backButton} 
+            onPress={() => router.back()}
+            activeOpacity={0.7}
           >
-            <Ionicons 
-              name={file ? "document-text" : "document-outline"} 
-              size={24} 
-              color={file ? "#00ff88" : "#00c6ff"} 
-            />
-            <Text style={styles.pickText}>
-              {file ? file.name : 'Select SBI PDF Statement'}
-            </Text>
-            {file && (
-              <TouchableOpacity onPress={clearAll} style={styles.clearBtn}>
-                <Ionicons name="close-circle" size={20} color="#ff4444" />
-              </TouchableOpacity>
-            )}
+            <Ionicons name="arrow-back" size={24} color="#10b981" />
           </TouchableOpacity>
+          
+          <View style={styles.headerCenter}>
+            <View style={styles.logoContainer}>
+              <Image 
+                source={require('../../assets/images/yono.png')} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
+            <View>
+              <Text style={styles.headerTitle}>SBI Statement</Text>
+              <Text style={styles.headerSubtitle}>Digital Banking Import</Text>
+            </View>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
 
-          {/* Password Input */}
-          <View style={styles.passwordContainer}>
-            <Ionicons name="lock-closed" size={20} color="#666" style={styles.passwordIcon} />
-            <TextInput
-              placeholder="PDF Password (DOB: DDMMYYYY)"
-              placeholderTextColor="#666"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              style={styles.passwordInput}
-              editable={!loading}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Info Card */}
+          <View style={styles.infoCard}>
+            <View style={styles.infoIconContainer}>
+              <Ionicons name="information-circle" size={20} color="#10b981" />
+            </View>
+            <Text style={styles.infoText}>
+              Upload password-protected SBI e-Statement PDF. Password is usually your date of birth.
+            </Text>
           </View>
 
-          <Text style={styles.passwordHint}>
-            Usually your date of birth in DDMMYYYY format
-          </Text>
+          {/* File Selection Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Select PDF Statement</Text>
+            <TouchableOpacity 
+              style={[styles.fileBox, file && styles.fileBoxSelected]} 
+              onPress={pickPDF}
+              disabled={loading}
+              activeOpacity={0.7}
+            >
+              <View style={styles.fileIconContainer}>
+                <Ionicons 
+                  name={file ? "document-text" : "cloud-upload-outline"} 
+                  size={32} 
+                  color={file ? "#10b981" : "#64748b"} 
+                />
+              </View>
+              <View style={styles.fileTextContainer}>
+                <Text style={[styles.fileTitle, file && styles.fileTitleSelected]}>
+                  {file ? file.name : 'Choose PDF File'}
+                </Text>
+                <Text style={styles.fileSubtitle}>
+                  {file ? 'Tap to change file' : 'SBI e-Statement PDF'}
+                </Text>
+              </View>
+              {file && (
+                <TouchableOpacity 
+                  onPress={clearAll} 
+                  style={styles.removeButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={24} color="#ef4444" />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+          </View>
 
-          {/* Upload Button */}
+          {/* Password Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>PDF Password</Text>
+            <View style={styles.passwordBox}>
+              <View style={styles.passwordIconContainer}>
+                <Ionicons name="lock-closed" size={20} color="#10b981" />
+              </View>
+              <TextInput
+                placeholder="Enter password (DDMMYYYY)"
+                placeholderTextColor="#64748b"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                style={styles.passwordInput}
+                editable={!loading}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+            <Text style={styles.passwordHint}>
+              💡 Usually your date of birth in DDMMYYYY format
+            </Text>
+          </View>
+
+          {/* Import Button */}
           <TouchableOpacity
             disabled={loading || !file || !password.trim()}
             onPress={uploadAndImport}
-            style={styles.uploadButton}
+            style={[
+              styles.importButton,
+              (loading || !file || !password.trim()) && styles.importButtonDisabled
+            ]}
+            activeOpacity={0.8}
           >
-            <LinearGradient
-              colors={loading ? ['#666', '#666'] : ['#00ff88', '#00c6ff']}
-              style={styles.uploadBtn}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Ionicons 
-                name={loading ? "cloud-upload" : "cloud-upload-outline"} 
-                size={22} 
-                color="#000" 
-              />
-              <Text style={styles.uploadText}>
-                {loading ? 'Processing...' : 'Upload & Import'}
-              </Text>
-            </LinearGradient>
+            {loading ? (
+              <>
+                <ActivityIndicator size="small" color="#000" />
+                <Text style={styles.importButtonText}>Processing...</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="cloud-upload" size={20} color="#000" />
+                <Text style={styles.importButtonText}>Import Transactions</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           {loading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#00c6ff" />
-              <Text style={styles.loadingText}>Parsing PDF statement...</Text>
+            <View style={styles.loadingCard}>
+              <ActivityIndicator size="large" color="#10b981" />
+              <Text style={styles.loadingText}>Parsing your statement...</Text>
+              <Text style={styles.loadingSubtext}>This may take a few moments</Text>
             </View>
           )}
 
-          {/* Results */}
+          {/* Results Card */}
           {result && (
-            <LinearGradient 
-              colors={['#02140B', '#000']}
-              style={styles.resultBox}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <Animated.View 
+              style={[
+                styles.resultCard,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ scale: scaleAnim }],
+                },
+              ]}
             >
-              <Text style={styles.resultTitle}>Import Results</Text>
-              <ResultRow label="Total Transactions" value={result.total} />
-              <ResultRow label="Successfully Saved" value={result.saved} />
-              <ResultRow label="Duplicates Skipped" value={result.skipped} />
-              <View style={styles.messageBox}>
-                <Text style={styles.messageText}>{result.message}</Text>
+              <View style={styles.resultHeader}>
+                <View style={styles.resultIconContainer}>
+                  <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                </View>
+                <Text style={styles.resultTitle}>Import Complete</Text>
               </View>
-            </LinearGradient>
+
+              <View style={styles.resultStats}>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{result.total}</Text>
+                  <Text style={styles.statLabel}>Total</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statBox}>
+                  <Text style={[styles.statValue, styles.statValueSuccess]}>
+                    {result.saved}
+                  </Text>
+                  <Text style={styles.statLabel}>Saved</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statBox}>
+                  <Text style={[styles.statValue, styles.statValueSkipped]}>
+                    {result.skipped}
+                  </Text>
+                  <Text style={styles.statLabel}>Skipped</Text>
+                </View>
+              </View>
+
+              <View style={styles.resultMessage}>
+                <Text style={styles.resultMessageText}>{result.message}</Text>
+              </View>
+            </Animated.View>
           )}
 
-          {/* Instructions */}
+          {/* Instructions Card */}
           {!file && !result && (
-            <View style={styles.instructions}>
-              <Text style={styles.instructionsTitle}>How to export SBI statement:</Text>
-              <Text style={styles.instruction}>1. Login to SBI Net Banking</Text>
-              <Text style={styles.instruction}>2. Go to Accounts → e-Statements</Text>
-              <Text style={styles.instruction}>3. Select account and date range</Text>
-              <Text style={styles.instruction}>4. Download PDF (password protected)</Text>
-              <Text style={styles.instruction}>5. Password is usually your DOB (DDMMYYYY)</Text>
+            <View style={styles.instructionsCard}>
+              <View style={styles.instructionsHeader}>
+                <Ionicons name="help-circle-outline" size={22} color="#10b981" />
+                <Text style={styles.instructionsTitle}>How to Download</Text>
+              </View>
+
+              <View style={styles.instructionsList}>
+                <InstructionStep number="1" text="Login to SBI Net Banking" />
+                <InstructionStep number="2" text="Navigate to Accounts → e-Statements" />
+                <InstructionStep number="3" text="Select your account and date range" />
+                <InstructionStep number="4" text="Download the password-protected PDF" />
+                <InstructionStep number="5" text="Use your DOB (DDMMYYYY) as password" />
+              </View>
             </View>
           )}
-        </LinearGradient>
-      </ScrollView>
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
-function ResultRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
+function InstructionStep({ number, text }: { number: string; text: string }) {
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+    <View style={styles.instructionStep}>
+      <View style={styles.stepNumber}>
+        <Text style={styles.stepNumberText}>{number}</Text>
+      </View>
+      <Text style={styles.stepText}>{text}</Text>
     </View>
   );
 }
@@ -238,172 +348,332 @@ function ResultRow({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 16,
-  },
-  card: {
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#00ff8844',
+  content: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#000',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#00ff88',
-    marginLeft: 12,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#0f172a',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  subtitle: {
-    color: '#00c6ff',
-    fontSize: 14,
-    marginBottom: 30,
-    lineHeight: 20,
-  },
-  pickBox: {
+  headerCenter: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 18,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#00c6ff',
-    backgroundColor: '#02140B',
-    marginBottom: 20,
+    gap: 12,
   },
-  pickedBox: {
-    borderColor: '#00ff88',
-    backgroundColor: '#02140B99',
+  logoContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#0f172a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#1e293b',
   },
-  pickText: {
+  logo: {
+    width: 32,
+    height: 32,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
-    fontSize: 16,
-    marginLeft: 12,
-    flex: 1,
   },
-  clearBtn: {
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  infoIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#10b98115',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#94a3b8',
+    lineHeight: 18,
+  },
+  card: {
+    backgroundColor: '#0f172a',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 16,
+  },
+  fileBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#1e293b',
+    borderStyle: 'dashed',
+    backgroundColor: '#000',
+  },
+  fileBoxSelected: {
+    borderColor: '#10b981',
+    borderStyle: 'solid',
+    backgroundColor: '#0f172a',
+  },
+  fileIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#10b98115',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fileTextContainer: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  fileTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 4,
+  },
+  fileTitleSelected: {
+    color: '#fff',
+  },
+  fileSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  removeButton: {
     padding: 4,
   },
-  passwordContainer: {
+  passwordBox: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#00ff88',
-    backgroundColor: '#02140B',
-    borderRadius: 12,
-    marginBottom: 8,
+    borderColor: '#1e293b',
+    backgroundColor: '#000',
+    borderRadius: 16,
+    overflow: 'hidden',
   },
-  passwordIcon: {
-    marginLeft: 16,
+  passwordIconContainer: {
+    paddingLeft: 16,
   },
   passwordInput: {
     flex: 1,
     padding: 16,
+    paddingLeft: 12,
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '500',
   },
   passwordHint: {
-    color: '#666',
     fontSize: 12,
-    marginBottom: 25,
+    color: '#64748b',
+    marginTop: 10,
     fontStyle: 'italic',
   },
-  uploadButton: {
-    marginTop: 10,
-  },
-  uploadBtn: {
+  importButton: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10b981',
     paddingVertical: 18,
-    borderRadius: 14,
+    borderRadius: 16,
     gap: 10,
-    shadowColor: '#00c6ff',
-    shadowOpacity: 0.6,
+    marginTop: 10,
+    shadowColor: '#10b981',
+    shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
   },
-  uploadText: {
-    color: '#000',
-    fontSize: 18,
-    fontWeight: '700',
+  importButtonDisabled: {
+    backgroundColor: '#1e293b',
+    shadowOpacity: 0,
   },
-  loadingContainer: {
+  importButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  loadingCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: 20,
+    padding: 32,
+    marginTop: 20,
     alignItems: 'center',
-    marginTop: 30,
+    borderWidth: 1,
+    borderColor: '#1e293b',
   },
   loadingText: {
-    color: '#00c6ff',
-    marginTop: 10,
-    fontSize: 14,
-  },
-  resultBox: {
-    marginTop: 30,
-    padding: 20,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#00ff8844',
-  },
-  resultTitle: {
-    color: '#00ff88',
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#00ff8811',
-  },
-  rowLabel: {
-    color: '#00c6ff',
-    fontSize: 16,
-  },
-  rowValue: {
-    color: '#00ff88',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  messageBox: {
-    marginTop: 15,
-    padding: 12,
-    backgroundColor: '#00ff8810',
-    borderRadius: 8,
-  },
-  messageText: {
-    color: '#fff',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  instructions: {
-    marginTop: 40,
-    padding: 16,
-    backgroundColor: '#02140B',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#00ff8822',
-  },
-  instructionsTitle: {
-    color: '#00ff88',
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    color: '#fff',
+    marginTop: 16,
   },
-  instruction: {
-    color: '#00c6ff',
+  loadingSubtext: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 6,
+  },
+  resultCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: 20,
+    padding: 24,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 12,
+  },
+  resultIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#10b98115',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resultTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  resultStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 20,
+    backgroundColor: '#000',
+    borderRadius: 16,
+    marginBottom: 20,
+  },
+  statBox: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  statValueSuccess: {
+    color: '#10b981',
+  },
+  statValueSkipped: {
+    color: '#f59e0b',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#1e293b',
+  },
+  resultMessage: {
+    backgroundColor: '#000',
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#10b981',
+  },
+  resultMessageText: {
     fontSize: 14,
-    marginBottom: 6,
+    color: '#fff',
+    lineHeight: 20,
+  },
+  instructionsCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: 20,
+    padding: 24,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  instructionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 20,
+  },
+  instructionsTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  instructionsList: {
+    gap: 16,
+  },
+  instructionStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#10b981',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumberText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000',
+  },
+  stepText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#94a3b8',
     lineHeight: 20,
   },
 });
