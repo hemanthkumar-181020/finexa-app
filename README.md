@@ -102,9 +102,9 @@ A modern, cross-platform mobile application for comprehensive personal finance m
 
 | Service | Technology | Purpose | Repository |
 |---------|------------|---------|------------|
-| **SBI PDF Extractor** | FastAPI + Python + pdfplumber | Process SBI bank statements with UTR extraction | [github.com/reddy1307/sbi-pdf-extract](https://github.com/reddy1307/sbi-pdf-extract) |
-| **PhonePe PDF Extractor** | FastAPI + Python + regex | Process PhonePe statements with UTR-based parsing | [github.com/reddy1307/PDF-EXTRACT](https://github.com/reddy1307/PDF-EXTRACT) |
-| **Spending Predict API** | FastAPI + Python + ML models | ML-based spending predictions using UTR-linked data | [github.com/reddy1307/spending-predict-api](https://github.com/reddy1307/spending-predict-api) |
+| **SBI PDF Extractor** | FastAPI + Python + pdfplumber(https://sbi-pdf-extract-ge72.vercel.app/) | Process SBI bank statements with UTR extraction | [github.com/reddy1307/sbi-pdf-extract](https://github.com/reddy1307/sbi-pdf-extract) |
+| **PhonePe PDF Extractor** | FastAPI + Python + regex (https://pdf-extract-4j8d.vercel.app/) | Process PhonePe statements with UTR-based parsing | [github.com/reddy1307/PDF-EXTRACT](https://github.com/reddy1307/PDF-EXTRACT) |
+| **Spending Predict API** | FastAPI + Python + ML models(https://spending-predict-api-5.onrender.com) | ML-based spending predictions using UTR-linked data | [github.com/reddy1307/spending-predict-api](https://github.com/reddy1307/spending-predict-api) |
 
 ## 🚀 Installation
 
